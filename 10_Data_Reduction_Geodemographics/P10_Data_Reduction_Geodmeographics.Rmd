@@ -1,0 +1,374 @@
+---
+title: "Data Reduction - Geodemographics"
+output: html_document
+---
+
+## Learning Objectives
+By the end of this practical lab you will be able to:
+* Standardize and normalize an input dataset
+* Use cluster analysis to build a typology
+* Create scores that can be used to describe the clusters
+* Build and visualize a grand index table
+
+## Geodmeographic methods
+
+There is no single or correct method for building a geodemographic classification. What we present here follows the methodology used to create the [UK Output Area Classification](http://dx.doi.org/10.5311/JOSIS.2016.12.232), however is applied within a single city context; in this case Liverpool. As such, this process mirrors the creation of other regional classifications, such as the [London Output Area Classification](http://dx.doi.org/10.1002/geo2.7).
+
+The inputs to OAC are sourced entirely from the UK 2011 census, and are organised around three domains; demographic, housing and socio-economics. These are then divided into a series of sub-domains comprised of a total of 60 variables. The input variables to OAC are all calculated as percentages against an appropriate denominator, with the exception of a standardized illness ratio and population density. Input data were selected on the basis of maintaining similarity to the OAC developed for the 2001 Census, but also exploiting some of those new variables added by the 2011 census. Such requirements were formulated after the outcome of a [national consultation exercise delivered by the ONS](http://www.ons.gov.uk/ons/guide-method/geography/products/area-classifications/ns-area-classifications/new-uk-output-area-classification/index.html).
+
+After the 2011 Census data were assembled and the attribute measures calculated, these were first standardized using an [inverse hyperbolic sine](https://en.wikipedia.org/wiki/Inverse_hyperbolic_function) function that transforms the attributes more closely to a normal distribution, which is argued as of assistance to clustering algorithms such as k-means given their optimization for finding spherical clusters.
+
+Secondly, prior to clustering, all of the attributes were standardized onto a 0-1 scale using a range standardization method, thus ensuring that each variable had an equal influence on the clustering result. The K-means algorithm was then implemented to cluster the UK into 8 initial clusters referred to as Super Groups. The data were then split by these clusters, and further divided into between 2 and 4 clusters, forming a second level called Groups and comprising 26 clusters in total. A final set of splits created a Sub Group level, comprising a total of 76 clusters. If you are interested in viewing a map of the 2011, this can be found [here](https://maps.cdrc.ac.uk/#/geodemographics/oac11/).
+
+## Data Import and Preparation
+
+First we will load a series of tables which includes: "Liverpool","Census_2011_Count_All","Variable_Desc" and "OAC_Input_Lookup". Census_2011_Count_All is a data frame containing census data for the UK, these are detailed in "Variable_Desc". The Liverpool data frame is a list of output areas within Liverpool, UK; however, if you wanted to repeat this analysis for a different city, you could swap this list. Finally, "OAC_Input_Lookup" is a lookup for the variables used to create OAC.
+
+```{r}
+# Load data
+load("./data/census_2011_UK_OA.RData")
+```
+
+We will now create a subset of the input data for Liverpool:
+
+```{r}
+#Crop
+Census_2011_Count <- merge(Liverpool,Census_2011_Count_All,by="OA",all.x=TRUE)
+```
+
+The first stage in the analysis is to create aggregations for the input data - if we look at the top six rows of the "OAC_Input_Lookup" data frame, the constituent variables for each of the OAC variables is shown in the England_Wales column. Thus for variable (see VariableCode column k001 this is "KS102EW0002"; but for k002, this requires three variables to be aggregated "KS102EW0003,KS102EW0004,KS102EW0005".
+
+```{r}
+head(OAC_Input_Lookup[,])
+```
+
+We will now write some code that will calculate all of the numerators:
+
+1. For each row in the OAC_Input_Lookup data frame (i.e OAC input variable)
+2. Create a list of census variables that are needed to create the OAC input variable (i.e. England_Wales column)
+3. Extract data for the variables identified from the census data contained in the Census_2011_Count data frame
+4. Sum the variables and give them the OAC input variable name
+
+
+```{r}
+
+OAC_Input <- as.data.frame(Census_2011_Count$OA)
+colnames(OAC_Input) <- "OA"
+
+# Loop through each row in the OAC input table
+for (n in 1:nrow(OAC_Input_Lookup)){
+
+      # Get the variables to aggregate for the row specified by n
+      select_vars <- OAC_Input_Lookup[n,"England_Wales"]
+      
+      # Create a list of the variables to select
+      select_vars <- unlist(strsplit(paste(select_vars),","))
+      
+      # Create variable name
+      vname <- OAC_Input_Lookup[n,"VariableCode"] 
+      
+      # Creates a sum of the census variables for each Output Area
+      tmp <- data.frame(rowSums(Census_2011_Count[,select_vars, drop=FALSE]))
+      colnames(tmp) <- vname
+      
+      # Append new variable to the OAC_Input object
+      OAC_Input <- cbind(OAC_Input,tmp)
+      
+      # Remove temporary objects
+      remove(list = c("vname","tmp"))
+
+} # END: Loop through each row in the OAC input table
+
+```
+
+Although we have included the variables for k035, this is merely for coding simplicity above, as we will calculate the Standardized Illness Ratio later; as such we will remove this from the numerator data frame
+
+```{r}
+#Remove attributes for SIR
+OAC_Input$k035 <- NULL
+```
+
+We will now create another data frame containing the denominators 
+
+```{r}
+
+OAC_Input_den <- as.data.frame(Census_2011_Count$OA)
+colnames(OAC_Input_den) <- "OA"
+
+# Create a list of unique denominators
+den_list <- unique(OAC_Input_Lookup[,"Denominator"])
+den_list <- paste(den_list[den_list != ""])
+
+# Select denominators
+OAC_Input_den <- Census_2011_Count[,c("OA",den_list)]
+
+```
+
+And then merge this with the numerators:
+
+```{r}
+#Merge
+OAC_Input <- merge(OAC_Input,OAC_Input_den, by="OA")
+```
+
+Now that we have assembled a data frame of numerators and denominators we can calculate the percentages. In order that we compare the correct numerator an denominator variables we will again use a loop that will run through a list of variable names created as follows:
+
+```{r}
+# Get numerator denominator list where the Type is "Count" - i.e. not ratio
+K_Var <- OAC_Input_Lookup[OAC_Input_Lookup$Type == "Count",c(1,3)]
+# View top 6 rows
+head(K_Var)
+```
+
+
+```{r}
+
+# Create an OA list / data frame
+OAC_Input_PCT_RATIO <- subset(OAC_Input, select = "OA")
+
+# Loop
+for (n in 1:nrow(K_Var)){
+  
+  num <- paste(K_Var[n,"VariableCode"]) # Get numerator name
+  den <- paste(K_Var[n,"Denominator"]) # Get denominator name
+  tmp <- data.frame(OAC_Input[,num] / OAC_Input[,den] * 100) # Calculate percentages
+  colnames(tmp) <- num
+  OAC_Input_PCT_RATIO <- cbind(OAC_Input_PCT_RATIO,tmp) # Append the percentages
+  
+  # Remove temporary objects
+  remove(list = c("tmp","num","den"))
+}
+
+```
+
+The final two variables include density (k007), which we can join from the original census table:
+
+```{r}
+#Extract Variable
+tmp <- Census_2011_Count[,c("OA","KS101EW0008")]
+colnames(tmp) <- c("OA","k007")
+
+#Merge
+OAC_Input_PCT_RATIO <- merge(OAC_Input_PCT_RATIO,tmp,by="OA")
+```
+
+We will now calculate the variable k035 which was the standardized illness rate (SIR) - which needs to be calculated for each subset of the national data (in this case Liverpool):
+
+```{r}
+# Calculate rates of ill people 15 or less and greater than or equal to 65
+ill_16_64 <- rowSums(Census_2011_Count[,c("KS301EW0005","KS301EW0006")]) # Ill people 16-64
+ill_total <-   rowSums(Census_2011_Count[,c("KS301EW0002","KS301EW0003")]) # All ill people
+ill_L15_G65 <- ill_total - ill_16_64 # Ill people 15 or less and greater than or equal to 65
+
+# Calculate total people 15 or less and greater than or equal to 65
+t_pop_16_64 <- rowSums(Census_2011_Count[,c("KS102EW0007","KS102EW0008","KS102EW0009","KS102EW0010","KS102EW0011","KS102EW0012","KS102EW0013")]) # People 16-64
+t_pop <- Census_2011_Count$KS101EW0001 # All people
+t_pop_L15_G65 <- t_pop - t_pop_16_64 # All people 15 or less and greater than or equal to 65
+
+# Calculate expected rate
+ex_ill_16_64 <- t_pop_16_64 * (sum(ill_16_64)/sum(t_pop_16_64)) # Expected ill 16-64
+ex_ill_L15_G65 <- t_pop_L15_G65 * (sum(ill_L15_G65)/sum(t_pop_L15_G65)) # Expected ill people 15 or less and greater than or equal to 65
+
+ex_ill <- ex_ill_16_64 + ex_ill_L15_G65 # total expected ill people
+
+# Ratio
+SIR <- as.data.frame(ill_total / ex_ill * 100) # ratio between ill people and expected ill people
+colnames(SIR) <- "k035"
+
+# Merge data
+OAC_Input_PCT_RATIO <- cbind(OAC_Input_PCT_RATIO,SIR)
+
+# Remove unwanted objects
+remove(list=c("SIR","ill_16_64","ill_total","ill_L15_G65","t_pop_16_64","t_pop","t_pop_L15_G65","ex_ill_16_64","ex_ill_L15_G65","ex_ill"))
+```
+
+We will now apply the two standardization and normalization procedures to the input data (OAC_Input_PCT_RATIO) - these are inverse hyperbolic sine and then range standardization.
+
+```{r}
+# Calculate inverse hyperbolic sine
+OAC_Input_PCT_RATIO_IHS <- log(OAC_Input_PCT_RATIO[,2:61]+sqrt(OAC_Input_PCT_RATIO[,2:61]^2+1))
+
+# Calculate Range
+range_01 <- function(x){(x-min(x))/(max(x)-min(x))} # range function
+OAC_Input_PCT_RATIO_IHS_01 <- apply(OAC_Input_PCT_RATIO_IHS, 2, range_01) # apply range function to columns
+
+# Add the OA codes back onto the data frame as row names
+rownames(OAC_Input_PCT_RATIO_IHS_01) <- OAC_Input_PCT_RATIO$OA
+```
+
+## Estimating the number of clusters
+
+You have now created a subset of 1584 Output Areas for the extent of Liverpool with inputs that have mirrored the attributes, measures, transformation and standardization methods used for the UK OAC 2011 classification. Prior to clustering this bespoke Liverpool classification, it is worth considering what would be an appropriate number of clusters for the initial Super Group (most aggregate) level.
+
+This can be considered by running some test cluster analysis with different cluster frequency (k), and for each result, examining a statistic called the [total within sum of squares](https://en.wikipedia.org/wiki/K-means_clustering). This is a measure of how well the cluster frequency fits the data - essentially the mean standardized distance of the data observations to a cluster mean. These tests are typically plotted, with the purpose to identify an "elbow criterion" which is a visual indication of where an appropriate cluster frequency might be set. The trade off you are looking for is the impact of increasing cluster frequency (i.e. making a more complex classification) versus a reduction in this score.
+
+```{r}
+library(ggplot2)
+
+# Create a new empty numeric object to store the wss results
+wss <- numeric()
+
+# Run k means for 2-12 clusters and store the wss results
+for (i in 2:12) wss[i] <- sum(kmeans(OAC_Input_PCT_RATIO_IHS_01, centers=i,nstart=20)$withinss)
+
+# Create a data frame with the results, adding a further column for the cluster number
+wss <- data.frame(2:12,wss[-1])
+
+# Plot the results
+names(wss) <- c("k","Twss")
+ggplot(data=wss, aes(x= k, y=Twss)) + geom_path() + geom_point() + scale_x_continuous(breaks=2:12) + labs(y = "Total within sum of squares")
+```
+
+You will see that there are no large decreases in the within sum of squares, and a minor moderation of the decrease around 7 or 8 clusters; which also mirrors similar patterns observed within UK OAC. As such, a 7 cluster solution was chosen.
+
+## Building the geodemographic
+
+Now that we have chosen seven clusters, we will consider how the partitioning can be optimized. Clustering uses the kmeans() function, which accepts a dataset input - in this case - OAC_Input_PCT_RATIO_IHS_01; the centres, which are the number of clusters, the iter.max which should be just set to a large number to allow the algorithm to complete, and nstart, which is the number of times the cluster analysis is run. It is common to set this to around 10,000 when building geodemographics, although, this will take quite a while to complete. This is necessary given that kmeans is stochastic.
+
+There is no need to run the following; and instead we will load a pre-run object for these settings:
+
+```{r eval= FALSE}
+cluster_7 <- kmeans(x=OAC_Input_PCT_RATIO_IHS_01, centers=7, iter.max=1000000, nstart=10000)
+```
+
+```{r}
+# Load cluster object
+load("./data/cluster_7.Rdata")
+```
+
+The cluster_7 object contains a list of different outputs related to the cluster analysis- we can view these:
+
+```{r}
+# Show object content
+str(cluster_7)
+```
+
+The cluster results can therefore be accessed as follows:
+
+```{r}
+# Lookup Table
+lookup <- data.frame(cluster_7$cluster)
+# Add OA codes
+lookup$OA <- rownames(lookup)
+colnames(lookup) <- c("K_7","OA")
+# Recode clusters as letter
+lookup$SUPER <- LETTERS[lookup$K_7]
+
+```
+
+We will also look at the distribution of these clusters:
+
+```{r}
+table(lookup$K_7)
+```
+
+And then map them:
+
+```{r}
+# Load packages
+library(rgdal)
+library(tmap)
+
+# Import OA boundaries
+liverpool_SP <- readOGR("./data/Liverpool_OA_2011.geojson", "OGRGeoJSON")
+
+# Merge lookup
+liverpool_SP <- merge(liverpool_SP, lookup, by.x="oa_code",by.y="OA")
+
+m <- tm_shape(liverpool_SP, projection=27700) +
+    tm_polygons(col="SUPER", border.col = "grey50",   palette="Set1",border.alpha = .3, title="Cluster", showNA=FALSE) +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
+
+#Create leaflet plot
+tmap_leaflet(m)
+
+```
+
+## Creating cluster descriptions and profiles
+
+We can now contextualize the cluster assignments further by looking at the rates for input attributes within each cluster compared to the Liverpool average. This is a common technique by which labels and written descriptions can be ascribed to the clusters. 
+
+We will first create a table of index scores. These are calculated by dividing the rate for a particular variable within a cluster by the rate for the same variable within the total population. These are multiplied by 100 which means an average is set at 100. Thus, half the average would be 50, and double 200.
+
+```{r}
+
+# Merge Original Data (inc. denominators)
+LiVOAC_Lookup_Input <- merge(lookup,OAC_Input,by="OA",all.x=TRUE)
+
+# Remove Ratio Variables
+LiVOAC_Lookup_Input$k007 <- NULL
+LiVOAC_Lookup_Input$k035 <- NULL
+
+# Create Aggregations by SuperGroup
+SuperGroup <-aggregate(LiVOAC_Lookup_Input[,4:78], by=list(LiVOAC_Lookup_Input$SUPER),  FUN=sum)
+
+# Create a data frame that will be used to append the index scores
+G_Index <- data.frame(SUPER=LETTERS[1:7])
+
+# Loop
+for (n in 1:nrow(K_Var)){
+  
+  num <- paste(K_Var[n,"VariableCode"]) # Get numerator name
+  den <- paste(K_Var[n,"Denominator"]) # Get denominator name
+  tmp <- data.frame(round((SuperGroup[,num] / SuperGroup[,den]) / (sum(SuperGroup[,num])/sum(SuperGroup[,den]))*100)) # Calculate index score - these are also rounded
+  colnames(tmp) <- num
+  
+  G_Index <- cbind(G_Index,tmp) # Append the index calculations
+  
+  # Remove temporary objects
+  remove(list = c("tmp","num","den"))
+}
+
+# View the index scores
+G_Index
+
+```
+
+To assist with spotting trends within the grand index table we can visualize create a plot of shaded cells. Before doing this we will however need to convert the data into a narrow format. The simplest way of going this is with the melt function that is contained within the reshape2 package.
+
+```{r eval=FALSE}
+install.packages("reshape2")
+```
+```{r}
+library(reshape2)
+```
+
+```{r}
+# Convert from wide to narrow format
+G_Index_Melt <- melt(G_Index, id.vars="SUPER")
+# View the top of the new narrow formatted data frame
+head(G_Index_Melt)
+```
+
+We then need to create a new variable that we will use on the plot to create color bins. It is common practice when building a geodemographic to create aggregations of less than or equal to 80, between 81 and 120 and greater than 120. We implement the recoding here with an ifelse() function; and then re-order the created factors so that they display from lowest to highest on the plot. Finally, we will import and merge a final column which is a set of shortened variable descriptions - however, if you want the full versions (which are too long for the plot) - remember these can be found in the "OAC_Input_Lookup" data frame.
+
+```{r}
+# Recode the index scores into aggregate groupings
+G_Index_Melt$band <- ifelse(G_Index_Melt$value <= 80,"< 80",ifelse(G_Index_Melt$value > 80 & G_Index_Melt$value <= 120,"80-120",">120"))
+
+# Add a column with short descriptions of the variables
+short <- read.csv("./data/OAC_Input_Lookup_short_labels.csv")
+G_Index_Melt <- merge(G_Index_Melt,short,by.x="variable",by.y="VariableCode",all.x=TRUE)
+
+# Order the created factors appropriately - needed to ensure the legend and axis make sense in ggolot2
+G_Index_Melt$band <- factor(G_Index_Melt$band, levels = c("< 80","80-120",">120"))
+G_Index_Melt$VariableDescription <- factor(G_Index_Melt$VariableDescription, levels = short$VariableDescription)
+
+```
+
+Using ggplot2 we can now create a shaded table which you can use to come up with descriptions of the clusters and creative labels.
+
+```{r fig.width=7, fig.height=10}
+library(ggplot2)
+p <- ggplot(G_Index_Melt, aes(x=SUPER, y=VariableDescription, label=value, fill=band)) + 
+  scale_fill_manual(name = "Band",values = c("#EB753B","#F7D865","#B3D09F")) +
+  scale_x_discrete(position = "top") +
+  geom_tile(alpha=0.8) +
+  geom_text(colour="black")
+p
+```
+
+# Further resources / training
+
+* [The Past, Present and Future of Geodemographic Research in the United States and United Kingdom](http://dx.doi.org/10.1080/00330124.2013.848764)
+* [Geodemographics, GIS and Neighbourhood Targeting](http://eu.wiley.com/WileyCDA/WileyTitle/productCd-0470864133.html)

@@ -1,0 +1,269 @@
+---
+title: "Network Analysis"
+output: html_document
+---
+
+## Learning Objectives
+By the end of this practical lab you will be able to:
+
+* Build graph / network objects within R that feature vertex and edge attributes
+* Create graph / network  plots with various layout types
+* Calculate and plot centrality measures
+* Use community detection to cluster vertices
+
+## Cities of flow
+We have already covered the various ways in which flow data can be visualized, however, it is increasingly common within urban analytics to build networks from these data or their subsets, and to use graph / network analysis techniques to create summary measures of their structure that help thinking about positioning of entities within systems. These networks may relate to flows between zones, physical networks such as transit systems or the geolocation of individuals within social networks.
+
+## Building a graph from origin destination data
+
+Using origin-destination flows from the 2011 UK census we will convert these data into a network structure and then explore the various ways in which these can be represented by different graph layout methods.
+
+We will first import [Middle Layer Super Output Area level origin-destination data](https://www.nomisweb.co.uk/census/2011/bulk/rOD1)(table: WF01BEW) and then subset this for Greater London using a [boundary file](https://data.london.gov.uk/dataset/statistical-gis-boundary-files-london).
+
+```{r warning= FALSE, message= FALSE}
+library(rgdal,verbose = FALSE)
+```
+
+```{r warning=FALSE,error=FALSE}
+# Load OD data for England and Wales
+load("./data/wu03ew_msoa.Rdata")
+colnames(wu03ew_msoa) <- c("Residence","Workplace","All","Mainly_Work_Home","Underground_Tram","Train","Bus","Taxi","Motorcycle","Driving", "Passenger_car","Bicycle","Foot","Other")
+
+# Read MSOA boundaries
+London_SP <- readOGR("./data/MSOA_London.geojson", "OGRGeoJSON",verbose = FALSE)
+
+# Get a list of MSOA within Greater London
+MSOA_Lon <- London_SP@data$MSOA11CD
+
+# Subset flows to Greater London & remove internal flows (internal flows can also be removed using the simplify() function when the igraph object is created)
+OD_Flow_London <- subset(wu03ew_msoa, (Residence %in% MSOA_Lon) & (Workplace %in% MSOA_Lon))
+OD_Flow_London <- OD_Flow_London[as.character(OD_Flow_London$Residence) != as.character(OD_Flow_London$Workplace),]
+
+# Show top six rows of data
+head(OD_Flow_London)
+```
+
+
+```{r eval= FALSE}
+install.packages("igraph")
+```
+
+```{r warning=FALSE,message=FALSE}
+library(igraph)
+```
+
+We will first create an igraph object using the graph_from_data_frame() function. The OD_Flow_London data frame contains origin destination pairs for the residential and workplace locations; alongside total flows and further columns with these broken down by different modes of transport. The graph_from_data_frame() function assumes the first two columns of the data frame are the vertex pairs being defined, and then all other columns are edge characteristics.
+
+```{r}
+# Create igraph object
+g_London <- graph_from_data_frame(OD_Flow_London, directed=TRUE)
+```
+
+Graphs are not always spatial, and as such various plotting algorithms have been developed to optimize the layout of vertices and their connections. We illustrate this in the following plot, however, in most urban applications where the networks are very dense, these can often be confusing and offer limiting visual analytic impact. In this example we have adjusted a series plot options including only plotting flows greater than 20 using delete.edges() and which(), setting a small vertex size and edge width, and adding transparency to the edge color with the adjustcolor() function. Additionally, because this is a directed network (i.e. flows can go in both directions) we have set this mode to off - this ensures that no arrows are plotted. Finally, the [fruchterman.reingold](https://en.wikipedia.org/wiki/Force-directed_graph_drawing) layout is selected which plots the most connected vertex towards the centre of the plot.
+
+```{r fig.height=7}
+# Set the arrow mode to off
+E(g_London)$arrow.mode <- 0
+
+#Layout with fruchterman reingold
+plot(delete.edges(g_London, which(E(g_London)$All < 20)), vertex.size=2, vertex.label=NA,layout = layout.fruchterman.reingold, edge.width=0.5,vertex.frame.color=NA,vertex.color="#FF5733",edge.color=adjustcolor("black",alpha.f = .2))
+```
+
+There are numerous other layouts include random and circle:
+
+```{r  fig.height=7}
+#Layout random
+plot(delete.edges(g_London, which(E(g_London)$All < 20)), vertex.size=2, vertex.label=NA,layout = layout.random, edge.width=0.5,vertex.frame.color=NA,vertex.color="#FF5733",edge.color=adjustcolor("black",alpha.f = .2))
+```
+
+```{r  fig.height=7}
+#Layout circle
+plot(delete.edges(g_London, which(E(g_London)$All < 20)), vertex.size=2, vertex.label=NA,layout = layout.circle, edge.width=0.5,vertex.frame.color=NA,vertex.color="#FF5733",edge.color=adjustcolor("black",alpha.f = .2))
+
+```
+
+We can also illustrate some of the other plot options that enable the edge width parameters to be scaled - these can be assigned any of the attributes that have been appended to the edges. Here we take the flows by bus, however, we divide these by 20 to reduce the width of the lines when plotted.  We also plot a smaller subset of the full graph that has edges with less than 40 trips removed; and additionally, any vertex where there are no other edge connections (because we have removed edges).
+
+```{r  fig.height=7}
+# Create a smaller network, removing edges where bus less than 40
+g_London_small <- delete.edges(g_London, which(E(g_London)$Bus < 40))
+# Remove vertex now with no connecting edges
+g_London_small <- delete.vertices(g_London_small,which(degree(g_London_small)<1))
+# Calculate how many verticies have been removed
+length(V(g_London)) - length(V(g_London_small))
+# Create plot
+plot(g_London_small, vertex.size=2, vertex.label=NA,layout = layout.fruchterman.reingold, edge.width=(E(g_London_small)$Bus)/20,vertex.frame.color=NA,vertex.color="#FF5733",edge.color=adjustcolor("black",alpha.f = .4))
+```
+
+The created graph comprises a series of self connected sub graphs; and we might be interested to see if these correspond to areas within London. As such we will now re-create our original graph, however, this time appending some additional attributes to the vertices which we will extract from the MSOA zones spatial data frame.
+
+```{r}
+# Show the top six rows of data
+head(London_SP@data)
+```
+
+In addition to the MSOA ID (MSOA11CD) we will extract the "LAD11NM" which contains a text name for the local authority within which the MSOA is located, and a centroid for the MSOA zones.
+
+```{r}
+# Create a table of vertex attributes
+V_attributes <- cbind(London_SP@data[,c("MSOA11CD","LAD11NM")],coordinates(London_SP)[,1],coordinates(London_SP)[,2])
+# Change the column headings
+colnames(V_attributes) <- c("MSOA11CD","LAD11NM","Easting","Northing")
+```
+
+We will now re-create our original graph and subset this again to bus flows of greater than 40. 
+
+```{r  fig.height=7}
+# Create new full graph, with added data frame of vertices attributes
+g_London_V2 <- graph_from_data_frame(OD_Flow_London, directed=TRUE, vertices = V_attributes)
+
+# Set the arrow mode to off
+E(g_London_V2)$arrow.mode <- 0
+
+# Create a smaller network, removing edges where bus less than 40
+g_London_small_V2 <- delete.edges(g_London_V2, which(E(g_London_V2)$Bus < 40))
+# Remove vertex now with no connecting edges
+g_London_small_V2 <- delete.vertices(g_London_small_V2,which(degree(g_London_small_V2)<1))
+
+```
+
+We will now create another plot, however, we have increased the vertex size to render these more visible, increased the transparency of flows and also assigned a list of colors (for each node) to the "vertex.color=" option. 
+
+To create the colors we load a new package that can generate effective random color pallets, with the objective to generate a list of colors reflecting each of the local authority divisions. We extract the local authority name for each vertex, convert these to a factor, and then to a numeric. If you remember from an earlier practical (1. Introduction to R), when converting factor directly to a numeric this returns a number based on the underlying factor order. For these purposes this is very helpful as it re-codes the local authority names into a number (e.g.  "City of London" becomes 7; "Barking and Dagenham" becomes  1). We then use these numbers as an index that selects a color from a potential list of 33 generated with the randomColor() function. 
+
+You will see that in the created plot many of the nodes appear clustered within boroughs of the same type; these placements (as discussed earlier) relate to edge connectivity density. 
+
+
+```{r eval= FALSE}
+install.packages("randomcoloR")
+```
+```{r}
+library(randomcoloR)
+```
+
+```{r  fig.height=7}
+# Create a list of colours that represent the london borough the node is within
+Vcol <- randomColor(33,luminosity="bright")[as.numeric(as.factor(V(g_London_small_V2)$LAD11NM))]
+
+#Layout graph
+plot(g_London_small_V2, vertex.size=4, vertex.label=NA,layout = layout.fruchterman.reingold, edge.width=(E(g_London_small_V2)$Bus)/20,vertex.frame.color=NA,vertex.color=Vcol,edge.color=adjustcolor("black",alpha.f = .1))
+
+```
+
+Given that the nodes relate to real-world features, we can also use their locations to update the plot; thus enabling the graph to be plotted spatially:
+<a id="geo"></a>
+```{r  fig.height=7}
+# Create a list of Easting and Northings for each of the graph vertices
+graph_layout <- cbind(V(g_London_small_V2)$Easting,V(g_London_small_V2)$Northing)
+
+# Layout - spatial 
+plot(g_London_small_V2, vertex.size=4, vertex.label=NA,layout = graph_layout, edge.width=(E(g_London_small_V2)$Bus)/20,vertex.frame.color=NA,vertex.color=Vcol,edge.color=adjustcolor("black",alpha.f = .1))
+```
+
+## Graph properties
+
+We can generate a range of [centrality](https://en.wikipedia.org/wiki/Centrality) statistics for the vertices - these measures relate to how important each vertex is to the structure of the network / graph. There are a range of different measures which we calculate for the full network below:
+
+```{r}
+#Create Centrality scores
+V(g_London_V2)$C_degree=degree(g_London_V2) #degree
+V(g_London_V2)$C_closeness=closeness(g_London_V2)#closeness
+V(g_London_V2)$C_evcent <- as.numeric(evcent(g_London_V2)$vector)#Eigenvector
+```
+
+We can color the nodes according to their centrality score. However, first we create a color pallet and break the Eigenvector closeness scores into a series of breaks.
+
+```{r}
+library(RColorBrewer)
+library(classInt)
+
+#Fix graph layout
+graph_layout <- layout.fruchterman.reingold(g_London_V2)
+
+#Set colors
+clr <- brewer.pal(9,"BuPu")
+
+#Eigenvector
+breaks <- classIntervals(V(g_London_V2)$C_evcent, n=9, style="jenks",intervalClosure)#Create breaks
+```
+
+In this example we will display all flows of greater than 100.
+
+```{r  fig.height=7}
+plot(delete.edges(g_London_V2, which(E(g_London_V2)$All < 100)), vertex.size=7, vertex.label=NA,layout = graph_layout, edge.width=.2,vertex.frame.color=NA,vertex.color=findColours(breaks, clr))
+```
+
+As we [demonstrated earlier](#geo), because the nodes have a spatial reference we can use these co-ordinates to plot the vertices geographically, however, an alternative approach is to append these vertex scores back onto a spatial polygons data frame and map as a traditional choropleth map:
+
+```{r}
+# Create a lookup table from the Eigenvector values for each MSOA
+EV_Lookup <- data.frame(names(V(g_London_V2)),V(g_London_V2)$C_evcent)
+# Change column names
+colnames(EV_Lookup) <- c("MSOA","Eigenvector")
+#Merge onto the MSOA spatial polygons data frame
+London_SP <- merge(London_SP,EV_Lookup,by.x="MSOA11CD",by.y="MSOA",all.x=TRUE)
+```
+
+```{r warning=FALSE, message= FALSE}
+# Load tmap
+library(tmap)
+```
+
+```{r}
+# Plot a choropleth of the Eigenvector values
+m <- tm_shape(London_SP,projection = 27700) +
+	tm_polygons(col="Eigenvector", style="pretty",n=5,border.col = "grey50",  border.alpha = .5, title="Eigenvector", showNA=FALSE,palette="Blues")
+
+# View using leaflet 
+tmap_leaflet(m)
+```
+
+
+## Community detection
+
+Community detection is way of segmenting a network into aggregate groups; there are [numerous algorythms](https://en.wikipedia.org/wiki/Community_structure) that can be implemented, but broadly speaking they all aim in different ways to assign vertices into groups where there is a high degree of internal connection. In this example we will use the [infomap community](http://arxiv.org/abs/0707.0609) algorithm to extract clusters for London.
+
+However, for very dense networks such as these London commuting flows, many algorithms will either not complete, return poor results or run in an unacceptable length of time. As such, we will first remove edges with small flows from the graph which makes analysis more manageable or feasible. We do this automatically using a while() function that evaluates a statement and if TRUE runs the code within the {}. Before running we set x as 1, so each time the loop is run, this number goes up by 1 and we delete more edges on the next run. For this network, we terminate at 34 where we specify a minimum of 5 edges between vertices.
+
+```{r}
+# Set x as 1
+x <- 1
+# Create an initial g_London_small_V3
+g_London_small_V3 <- g_London
+
+# Loop that removes edges
+while (min(degree(g_London_small_V3)) > 5) {
+  g_London_small_V3 <- delete.edges(g_London, which(E(g_London)$All < x))
+  x <- x + 1
+}
+x
+```
+
+We can then append these cluster results back onto the zones - note we convert the numerical output of the community detection into a capital letter for plotting.
+
+```{r}
+# Calculate edge betweenness
+IC <- infomap.community(g_London_small_V3,e.weights=E(g_London_small_V3)$All)
+
+# Create a lookup table from the infomap.community values for each MSOA
+IC_Lookup <- data.frame(names(V(g_London_small_V3)),LETTERS[IC$membership])
+
+# Change column names
+colnames(IC_Lookup) <- c("MSOA","infomap.community")
+
+#Merge onto the MSOA spatial polygons data frame
+London_SP <- merge(London_SP,IC_Lookup,by.x="MSOA11CD",by.y="MSOA",all.x=TRUE)
+```
+
+```{r}
+# Plot a choropleth of the infomap.community values
+m <- tm_shape(London_SP,projection = 27700) +
+	tm_polygons("infomap.community",border.col = "grey50",  border.alpha = .5, title="Cluster", showNA=FALSE)
+
+# View using leaflet 
+tmap_leaflet(m)
+```
+
+# Further resources / training
+
+* [Social Network Analysis: Methods and Applications](http://www.cambridge.org/gb/academic/subjects/sociology/sociology-general-interest/social-network-analysis-methods-and-applications?format=PB&isbn=9780521387071) - this is a classic reference on some of the methods implemented in this practical

@@ -1,0 +1,225 @@
+---
+title: "7. Data Viz 3 - Visualizing Point Patterns"
+output: html_document
+---
+
+
+##Learning Objectives
+
+By the end of this practical lab you will be able to:
+
+* Manipulate and re-code date and time stamps
+* Create summary graphics showing the temporal attributes of point data
+* Map point data using bins and density plots
+
+## Visualizing Points
+We will first read some crime data into R for the [City of Chicago, USA](https://data.cityofchicago.org/view/5cd6-ry5g). This contains those crimes which occurred during the year 2016 as of 24th December; with the attributes including the category of the crime and a variety of other information such as location and date / time. The following code imports the data, parses the date and time stamp using the base R function strptime() and also ymd_hms() from the package lubridate. We then remove unwanted columns and restrict the results to those coded as "BURGLARY".
+
+```{r eval= FALSE}
+install.packages("lubridate")
+```
+```{r message=FALSE, warning=FALSE}
+library(lubridate)
+```
+
+# Import Crimes
+crimes <- read.csv("./data/chicago_crimes_2016.csv")
+
+#Parse date & time
+crimes$New_Date <- ymd_hms((strptime(crimes$Date, "%m/%d/%Y %I:%M:%S %p",tz="UTC")))
+
+#Subset the data to remove unwanted colums
+crimes <- crimes[crimes$Primary.Type == "BURGLARY",c("ID","Latitude","Longitude","New_Date")]
+
+# Remove crimes with no lat / lon
+crimes <- crimes[!is.na(crimes$Latitude),]
+
+#View the top of the data
+head(crimes)
+```
+
+We can then see how the burglaries are distributed by day of the week. We use the wday() function to convert the date column into days - by adding "label = TRUE" this returns a text string relating to the day of the week (e.g. "Mon"):
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+```
+
+```{r}
+ggplot(data=crimes, aes(wday(crimes$New_Date,label = TRUE))) +
+    geom_bar() +
+    xlab("Day") + 
+    ylab("Burglaries (count)")
+```
+
+We can see that in 2016 there were more recorded burglary incidences during the week. We can also look at changes month, however, this time using the month() function:
+
+```{r}
+ggplot(data=crimes, aes(month(crimes$New_Date,label = TRUE))) +
+    geom_bar() +
+    xlab("Month") + 
+    ylab("Burglaries (count)")
+```
+
+So far we have displayed months and days separately, however, we can also use the facet_grid option to produce separate plots for each month; and additionally add an aesthetic to the geom_bar that colors each day differently.
+
+```{r}
+ggplot(data=crimes, aes(wday(crimes$New_Date,label = TRUE))) +
+    geom_bar(aes(,fill=wday(crimes$New_Date,label = TRUE))) +
+    xlab("Day") + 
+    ylab("Burglaries (count)") +
+    facet_grid(~month(crimes$New_Date,label = TRUE)) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),legend.position="none")
+```
+
+Using a similar technique we can also explore the time of the day during which burglaries have been recorded as having occurred and then view by quarter. When interpreting these data it is worth thinking about potential bias within the crime data - for example, why are so many burglaries recorded as having taken place first thing in the morning?
+
+```{r}
+#Create a summary data frame of the counts of burglaries by hour time band and quarter of the year
+t <- data.frame(table(hour(crimes$New_Date),quarter(crimes$New_Date)))
+
+colnames(t) <- c("Time","Quarter","Freq") # Name columns as something sensible
+
+#Create plot
+p <- ggplot(t, aes(x=Time, y=Freq, group=Quarter, colour = Quarter))
+p + geom_line()
+
+```
+
+As we showed in the previous practical (6. Data Viz 2 - Mapping Areas and Context), we can map points using ggmap - as a representation this is however not that useful and doesn't give a clear picture of the distribution of burglaries:
+
+```{r message=FALSE, warning=FALSE}
+library(ggmap)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+#Get background map for Chicago
+chicago <- get_map(location = "chicago", zoom = 11)
+
+#Basic point plot
+ggmap(chicago) + geom_point(data = crimes, aes(x = Longitude, y = Latitude))
+```
+
+We can improve this a bit by shrinking the point size and using transparency, however, this still isn't great as the point density is too high:
+
+
+```{r message=FALSE, warning=FALSE}
+#Basic point plot with point size reduced and transparency increased
+ggmap(chicago) + 
+    geom_point(data = crimes, aes(x = Longitude, y = Latitude),alpha = 0.1, size=0.7)
+```
+
+We showed in a previous lab that one way in which we can manage point data is to aggregate these up into a given zonal geography (see lab 2. Data Manipulation in R); however, this assumes that the data being observed have a [logical bounding geography](https://en.wikipedia.org/wiki/Modifiable_areal_unit_problem). When this is not the case it may be effective to spatially bin the data into a set of uniform and discrete zones. It is common for these visualizations to use either grids (squares) or hexagons; however, as with other formal zonal definitions (e.g. blocks / census tracts etc), the choice of grid or hex size may impact the patterns shown.
+
+We can create a gridded map using the stat_bin2d function - the size of the grid is adjusted with the bins size, and creates an aggregated count within each cell:
+
+```{r message=FALSE, warning=FALSE}
+ggmap(chicago, base_layer = ggplot(crimes, aes(x=Longitude, y=Latitude))) +
+stat_bin2d(bins = 20)
+```
+
+Higher numbers create a smaller grid size:
+
+```{r message=FALSE, warning=FALSE}
+ggmap(chicago, base_layer = ggplot(crimes, aes(x=Longitude, y=Latitude))) +
+stat_bin2d(bins = 50)
+```
+
+A similar representation can be made created with hexagons instead of squares, however, we need a number of additional parameters that prevent the output map being distorted. First we plot without these:
+
+
+```{r message=FALSE, warning=FALSE}
+ggmap(chicago, base_layer = ggplot(crimes, aes(x=Longitude, y=Latitude))) +
+coord_cartesian() +
+stat_binhex(bins=50)
+```
+
+And then we plot with the adjustment which prevents the stretching of the x axis
+
+```{r message=FALSE, warning=FALSE}
+ggmap(chicago, base_layer = ggplot(crimes, aes(x=Longitude, y=Latitude))) +
+coord_cartesian(xlim = c(-87.84918,-87.3)) +
+stat_binhex(bins=50)
+```
+
+We can then tidy the map up further, and in particular, remove the grey area and axis content from the display:
+
+
+```{r message=FALSE, warning=FALSE}
+ggmap(chicago, base_layer = ggplot(crimes, aes(x=Longitude, y=Latitude))) +
+coord_cartesian(xlim = c(-87.84918,-87.3)) +
+stat_binhex(bins=50) + 
+theme_bw() +
+theme(axis.line = element_blank(),
+      axis.text = element_blank(),
+      axis.title=element_blank(),
+      axis.ticks = element_blank(),
+      legend.key = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank())
+```
+
+An alternative to aggregating points into zones of different types is to calculate a [density surface](http://www.spatialanalysisonline.com/HTML/index.html?density__kernels_and_occupancy.htm). This is implemented within ggmap through the stat_density2d function. The granularity of the surface is controlled with the bins argument. The legend displays both the alpha and the color choices because the "fill = ..level..,alpha=..level.." options are set; the "..level.." is an internal variable that refers to the number of bins chosen. We will suppress the alpha (bottom) legend item in the next plot.
+
+
+```{r message=FALSE, warning=FALSE}
+ggmap(chicago, base_layer = ggplot(crimes)) +
+  stat_density2d(aes(x = Longitude, y = Latitude,fill = ..level..,alpha=..level..), bins = 10, geom = "polygon", data = crimes) +
+  scale_fill_gradient(low = "black", high = "red")
+```
+
+We can extend the previous plot to add facets for two newly created variables, plus additionally remove some of the unwanted features of the previous map. First create two new columns that record the quarter and day of the week in which the burglary was recorded.
+
+```{r}
+#Append a quarter variable to the crimes data frame
+crimes$Q <- quarter(crimes$New_Date)
+#Append a day variable to the crimes data frame
+crimes$D <- wday(crimes$New_Date,label = TRUE)
+```
+
+Create a plot for quarters:
+
+```{r message=FALSE, warning=FALSE}
+# Create a plot
+ggmap(chicago, base_layer = ggplot(crimes)) +
+  stat_density2d(aes(x = Longitude, y = Latitude,fill = ..level..,alpha=..level..), bins = 10, geom = "polygon", data = crimes) +
+  scale_fill_gradient(low = "black", high = "red") +
+  facet_wrap(~ Q) +
+  guides(alpha=FALSE) +
+  theme_bw() +
+theme(axis.line = element_blank(),
+      axis.text = element_blank(),
+      axis.title=element_blank(),
+      axis.ticks = element_blank(),
+      legend.key = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank())
+```
+
+Create a plot for days:
+
+```{r message=FALSE, warning=FALSE}
+# Create a plot
+ggmap(chicago, base_layer = ggplot(crimes)) +
+  stat_density2d(aes(x = Longitude, y = Latitude,fill = ..level..,alpha=..level..), bins = 10, geom = "polygon", data = crimes) +
+  scale_fill_gradient(low = "black", high = "red") +
+  facet_wrap(~ D) +
+  guides(alpha=FALSE) +
+  theme_bw() +
+theme(axis.line = element_blank(),
+      axis.text = element_blank(),
+      axis.title=element_blank(),
+      axis.ticks = element_blank(),
+      legend.key = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank())
+```
+
+
+# Further resources / training
+* [Statistical Analysis of Spatial and Spatio-Temporal Point Patterns](https://www.crcpress.com/Statistical-Analysis-of-Spatial-and-Spatio-Temporal-Point-Patterns-Third/Diggle/p/book/9781466560239) - models and statistical methods for analyzing spatially referenced point data

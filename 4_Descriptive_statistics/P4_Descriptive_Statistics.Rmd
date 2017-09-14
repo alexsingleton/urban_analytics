@@ -1,0 +1,323 @@
+---
+title: "Descriptive statistics"
+output: html_document
+---
+
+##Learning Objectives
+By the end of this practical lab you will be able to:
+
+* Create summary descriptive statistics for numeric attributes
+* Generate frequency tables
+* Use aggregation functions
+* Write a basic user function
+* Convert between co-ordinate reference systems
+* Create contextual statistics for geographic features using buffers
+
+## Basic numeric summary statistics
+
+In the first part of this practical we will import some [Airbnb](http://insideairbnb.com/get-the-data.html) data for Amsterdam that was collected during July, 2016.
+
+```{r}
+# Read in CSV
+amsterdam <- read.csv("./data/listings.csv")
+```
+
+This contains a wide array of variables:
+
+```{r}
+colnames(amsterdam)
+```
+
+However, for this practical we will subset these data to a limited set of variables:
+
+```{r}
+# Subset data
+amsterdam <- subset(amsterdam, select = c("id","neighbourhood_cleansed","latitude","longitude","property_type","room_type","bedrooms","price","number_of_reviews"))
+
+# Clean the price data to remove $ and , then convert to numeric (If you are doing this outside of the US / UK and have a non English locale set, try running Sys.setlocale("LC_ALL","English") before using gsub)
+amsterdam$price <- gsub("$","",amsterdam$price,fixed = TRUE)
+amsterdam$price <- gsub(",","",amsterdam$price,fixed = TRUE)
+amsterdam$price <- as.numeric(as.character(amsterdam$price))
+
+#Remove any records that are not complete
+amsterdam <- amsterdam[complete.cases(amsterdam),]
+
+# Show the top six rows
+head(amsterdam)
+```
+
+The simplest way to create a set of descriptive statistics is to use the summary() function which returns the minimum, maximum, first and third quartile, and the mean and median for each column. For non numeric columns (e.g. neighbourhood_cleansed),the frequencies of the top seven most frequent attributes are shown.
+
+```{r}
+#Summary
+summary(amsterdam)
+```
+
+There are numerous descriptive statistics available individually within R - here we illustrate these by exploring the "price" attribute:
+
+```{r}
+#Mean
+mean(amsterdam$price)
+
+# Median
+median(amsterdam$price)
+
+# Standard deviation
+sd(amsterdam$price)
+
+# Min, Max, Range
+min(amsterdam$price)
+max(amsterdam$price)
+range(amsterdam$price)
+
+# Quantiles
+quantile(amsterdam$price)
+
+```
+
+## Frequency tables
+
+Another common basic analysis task is to create a frequency table for a categorical variable - for example, the number of listings per neighborhood. This can be achieved using the table() function which prints a list of the unique attributes and the frequency of these observations.
+
+```{r}
+table(amsterdam$neighbourhood_cleansed)
+```
+
+It is also possible to create cross-tabulations; showing the frequency of two attributes - here we look at neighborhood and bedrooms:
+
+```{r}
+# Cross-Tabulation
+table(amsterdam$neighbourhood_cleansed,amsterdam$bedrooms)
+```
+
+We might want to store this as a new object which we can do in the usual way - however, if you look at the table structure (e.g. View(neigh_bedrooms) you will see that it is stored in [narrow format](https://en.wikipedia.org/wiki/Wide_and_narrow_data) rather than how the table is printed:
+
+```{r}
+# Cross-Tabulation
+neigh_bedrooms <- table(amsterdam$neighbourhood_cleansed,amsterdam$bedrooms)
+```
+
+From a cross tabulation table object you can create row and column frequencies using the margin.table() function, and convert the counts into percentages of row or column totals with prop.table() - round() is also used to limit the number of decimal places displayed:
+
+```{r}
+# Row frequencies
+margin.table(neigh_bedrooms,1)
+# Column frequencies
+margin.table(neigh_bedrooms,2)
+# Row percentages
+round(prop.table(neigh_bedrooms,1),2)
+# Column percentages
+round(prop.table(neigh_bedrooms,2),2)
+```
+
+If you want to convert a "table" back into an object then this is fairly simple:
+
+```{r}
+# Convert table to data frame
+neigh_bedrooms_DF <- as.data.frame(neigh_bedrooms)
+
+# View top 6 rows
+head(neigh_bedrooms_DF)
+```
+
+However, you will note that the data frame has been created in [narrow rather than wide format](https://en.wikipedia.org/wiki/Wide_and_narrow_data) (as displayed). To create a wide format you use a different function:
+
+```{r}
+# Convert table to data frame
+neigh_bedrooms_DF <- as.data.frame.matrix(neigh_bedrooms)
+
+# View top 6 rows
+head(neigh_bedrooms_DF)
+```
+
+## Create aggregations and summary statistics
+
+We have shown how we can use various descriptive summary functions for single columns, however, it is also possible to combine these with further functions which make these calculations within aggregations. This is especially useful for geographic application where you can create summaries by a defined area. In the following example we will use the function aggregate() to find out what the mean price is by neighborhood:
+
+```{r}
+aggregate(x=amsterdam[,"price"],by=list(amsterdam[,"neighbourhood_cleansed"]),FUN=mean)
+```
+
+In this example you will see that the "by=" option only accepts a "list" which we can easily create using the function list(). We can add additional attributes to the list to get further sub-aggregations - however, we won't display this here as it creates quite a large table.
+
+```{r eval=FALSE}
+aggregate(x=amsterdam[,"price"],by=list(amsterdam[,"neighbourhood_cleansed"],amsterdam[,"property_type"]),FUN=mean)
+```
+
+So far we have only considered the mean price, however, what if we wanted to create a number of statistics for each aggregation. We can do this quite simply, however, this requires that we write our own custom function. You have used lots of functions so far in these practicals, some have been built into base R, and others become available by loading packages.
+
+The basic structure of a function is:
+
+```
+function_name <- function(argument1,argument2,...){
+    Statments that do something...
+    return(something to return from the function)
+}
+```
+In this example we create a new function called "data_description" which calculates a mean and counts the number of records - these are stored within a new object called "stats" which is returned when the function is run.
+
+
+```{r}
+# User defined function
+data_description <- function(x) { 
+  stats <- c(M = mean(x), S = length(x))
+  return(stats)
+  }
+
+```
+
+We can see how this works by simply supplying the function some data - in this case, all the prices:
+
+```{r}
+data_description(amsterdam$price)
+```
+
+This returned the mean price, plus the length of the supplied string which is the same as the number of rows in the data frame - i.e. ``r nrow(amsterdam)``. We can now use our function to create means for aggregations using a very helpful package called doBy which we will load now:
+
+```{r eval=FALSE}
+install.packages("doBy")
+```
+```{r}
+library(doBy)
+```
+
+Using the summaryBy() function we can now apply our data_description() function to a set of aggregations. We separate the price from the grouping variable using the "~" symbol. If you are wondering what an Earth House is, [Wiki has an answer](https://en.wikipedia.org/wiki/Earth_house)...
+
+```{r}
+  summaryBy(price ~ property_type, data = amsterdam, FUN = data_description )
+```
+
+## Spatial summary measures
+
+So far we have considered a pre-defined geography in the previous example: neighborhoods. However, a common spatial analysis task is to create descriptive statistics related to the context of features. This task will typically require a buffer to be created around a feature and then data aggregated and summarized within the buffers.
+
+First we will import a spatial data file that relates to [historic building locations](http://maps.amsterdam.nl/open_geodata/):
+
+```{r}
+#Load package
+library(rgdal,verbose = FALSE)
+```
+
+
+```{r}
+historic = readOGR("./data/historic_buildings.geojson", "OGRGeoJSON",verbose = FALSE)
+```
+
+We will then create a spatial point data frame using Airbnb data:
+
+```{r}
+# Create the SpatialPointsDataFrame
+SP_amsterdam <- SpatialPointsDataFrame(coords = data.frame(amsterdam$longitude, amsterdam$latitude), data = amsterdam, proj4string = historic@proj4string)
+```
+
+We will now use the function gBuffer() which is found within the Rgeos package to create radial buffers around the historic building locations, however, before we can do this we must first alter the [projection](https://en.wikipedia.org/wiki/Map_projection) of both the spatial point data frames so that they have a unit in meters - currently these are projected as WGS84. A common projection in meters for the Netherlands is ["Amersfoort / RD Old EPSG:28992"](http://spatialreference.org/ref/epsg/amersfoort-rd-new/). We can convert both objects to this projection using the spTransform() function.
+
+
+```{r}
+# Convert Airbnb
+SP_amsterdam <- spTransform(SP_amsterdam, CRS( "+init=epsg:28992" ))
+
+# Convert historic buildings
+historic <- spTransform(historic, CRS( "+init=epsg:28992" ) ) 
+
+# View Airbnb
+plot(SP_amsterdam)
+
+# View historic buildings
+plot(historic)
+```
+
+Now that the projections are in a CRS with meters as the unit we can specify a sensible width for the gBuffer function - we will set this as 200 meters.
+
+```{r}
+#Load package
+library(rgeos,verbose = FALSE)
+#Create buffer
+historic_Buffers <- gBuffer(historic, width = 200, byid = TRUE)
+# Show buffer
+plot(historic_Buffers)
+```
+
+This function has created a SpatialPolygonsDataFrame with 200m buffers around the points. The data attributes of the new object are the same as the points:
+
+```{r}
+# View top six rows of data
+head(historic_Buffers@data)
+```
+
+As we illustrated in a previous practical (see 2. Data Manipulation in R) we can use point.in.poly() to identify which points lie within a polygon; however, in this example things are a little more complex and many of the polygons overlap; and thus a point can be in multiple polygons. As such we will use a slightly less automated technique. For this we will use the over() function, however, because we are interested in calculating some values for each buffer area, we first need to add an extra parameter - returnList=TRUE. This returns a list of data frames, where each element of the list is a separate data frame and refers to a buffer, and the values those Airbnb records that are within this zone. This is a little different from the lists you created previously that were just lists of character strings or numerics.
+
+```{r}
+# Create point in polygon list
+o <- over(historic_Buffers, SP_amsterdam, returnList = TRUE)
+# View length of the list - this is the same length as the number of historic buildings / buffers
+length(o)
+```
+If we examine the object o, we will see also see that this comprises a list of data frames. The summary function tells you about an object - head, is used to wrap around the function so only the first six elements are shown:
+```{r}
+head(summary(o))
+```
+
+```{r}
+# View an item from the list (in this case, item 199)
+o[[199]]
+```
+
+We will discuss plotting in more detail during a later practical, however, here we plot the results of the point in polygon:
+
+```{r echo=FALSE}
+# Plot the buffer for item 199
+plot(historic_Buffers[199, ], col = "#D4D4D4")
+# get a list of properties that are within this buffer
+row_o <- o[[199]]$id
+# Plot all the buildings
+plot(SP_amsterdam, pch = 19, cex = 0.5, col = "#7F7F7F", add = TRUE)
+# Plot buildings within buffer
+plot(SP_amsterdam[SP_amsterdam$id %in% row_o, ], pch = 19, cex = 0.5, col = "#FF4500", add = TRUE)
+```
+
+We can now look at the results of the point in polygon analysis and calculate the characteristics within each buffer. The first stage is to use the lapply() function to apply a function across the list - the first function removes all columns within each of the data frames within the list, apart from those specified; and the second calculates the mean - note that we also use the unlist() function that creates a vector of the prices.
+
+```{r}
+
+# Keep just the price
+o_cut <- lapply(o, function(x) x[(names(x) = "price")])
+
+#Show just the prices for 199th item in the list
+o_cut[199]
+
+#Create a list of the mean price within the buffer
+average_buffer_price <- lapply(o_cut, function(x) mean(unlist(x)))
+
+```
+
+We will now convert this list to a data frame and then append this back onto the historic buffer locations:
+
+```{r}
+# Create data frame
+average_buffer_price <- data.frame(unlist(average_buffer_price))
+
+# Update column names
+colnames(average_buffer_price) <- "Av_price_200m"
+
+# Append the buildings
+historic_Buffers@data <- cbind(historic_Buffers@data,average_buffer_price)
+
+# View the top six rows
+head(historic@data)
+```
+
+The buffers are also shown on a map:
+
+```{r echo=FALSE}
+library(tmap)
+m <- tm_shape(historic_Buffers, projection=28992) +
+    tm_polygons(col="Av_price_200m", style="jenks",n=5, showNA=FALSE,palette="Blues") +
+   tm_layout(legend.position = c("right", "top"), frame = FALSE)
+#Print plot
+tmap_leaflet(m)
+```
+
+# Further resources / training
+* [Stats Methods](http://www.statmethods.net/stats/descriptives.html) - some useful descriptions of various descriptive statistic methods / packages
+* [Spatial cheat sheet](http://www.maths.lancs.ac.uk/~rowlings/Teaching/UseR2012/cheatsheet.html) - lots of useful help and functions for working with spatial data

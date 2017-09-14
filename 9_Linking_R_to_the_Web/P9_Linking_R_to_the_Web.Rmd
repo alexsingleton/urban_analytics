@@ -1,0 +1,383 @@
+---
+title: "Linking R to the Web"
+output: html_document
+---
+
+##Learning Objectives
+By the end of this practical lab you will be able to:
+
+1. Learn how R can be used for web analysis
+2. Have the skills to utilize web mapping servers to provide contextual detail for maps within R
+3. Use geocoding and routing functionality to plot locations
+
+## Introduction
+This practical lab concerns integrating the web with R, both as a source of data or as an analytics platform. These connections utilize Application Programming Interfaces (API) which enable data queries or analytics to be run, returning the results within R. Much of the complexity to these interfaces are hidden by the R packages that will be demonstrated here and therefore are quite accessible.
+
+## Reading data from the web
+
+One of the simplest ways in which you can read data from the web is by using some of the same functionality for reading local files. For example, we can read a CSV file of [municipal swimming pool locations in Brisbane, Australia](https://www.data.brisbane.qld.gov.au/data/dataset/swimming-pools) as follows:
+
+```{r}
+# The local file location is swapped for a remote url
+swimming_pools <- read.csv("https://www.data.brisbane.qld.gov.au/data/dataset/ccf67d3e-cfaf-4d30-8b78-a794c783af9f/resource/c09546c8-9526-4358-a1eb-81dbb224cdca/download/Pools-location-and-information-09Dec16.csv")
+
+#Show the top six rows
+head(swimming_pools)
+
+```
+
+Reading special file formats such as [JSON](http://www.json.org) require additional packages such as jsonlite(). In this section, we will use this library to retrieve a JSON file from a Web API. First install and load jsonlite:
+
+```{r eval=FALSE}
+#Install jsonlite
+install.packages("jsonlite")
+```
+```{r}
+#Load Package
+library(jsonlite)
+```
+
+
+Generally a Web API is a service that receives requests or queries from users and returns a result via a web protocol (mainly HTTP). In this way, users can ask for and use data even without knowing how data are stored and processed. Due to the popularity of JavaScript in the WWW, JSON has become the most popular file format served by Web APIs.
+
+In the following example we pull live station data from the San Francisco bike share scheme:
+
+```{r}
+bikes<- fromJSON(txt="http://feeds.bayareabikeshare.com/stations/stations.json")
+```
+
+The bikes object is a list; the first entry returning the query time:
+
+```{r}
+bikes[1]
+```
+
+And the second element the data, which we will use to create a new data frame object "bikes_SF"
+
+```{r}
+bikes_SF <- data.frame(bikes[2])
+head(bikes_SF)
+```
+
+
+### Querying an API - Twitter as an Example of Social Media Data
+
+Although we used a fixed API endpoint in the last section to pull down a set of live data for a bike share scheme, many API can be supplied with queries that can flexibly return a subset of live data. In this example we will use the Twitter API using the rtweet package. However, before you do this, you will need to go to [setup a consumer token/secret](https://github.com/mkearney/rtweet/blob/master/vignettes/tokens.Rmd) (you will need a Twitter Account to do this).
+
+Next we will install and load the rtweet package:
+
+```{r eval=FALSE}
+# Install Package
+#install.packages("rtweet")
+# Although rtweet on CRAN is functional, the latest version on github has many bug fixes
+install.packages("githubinstall")
+githubinstall::gh_install_packages("rtweet",  ref = "5ef897e",dependencies=TRUE, ask= FALSE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+#Load package
+library("rtweet")
+```
+We will then create a new "token" environment for this application using the consumer key and consumer secret you just created - this uses the create_token() function:
+```{r,eval=FALSE}
+# Replace xxxx's with the values you copied from twitter
+my_tokens <- create_token(app = "rtweet_tokens", #whatever you named your app
+    consumer_key = "xxxxxxxxxxxxxxxxx",
+    consumer_secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+```
+
+```{r,echo=FALSE,eval=FALSE}
+my_tokens <- c(create_token(app = "Urban Analytics Book", #whatever you named your app
+    consumer_key = "bgvV7sDVc1kMdl8FZH71vmZW7",
+    consumer_secret = "g5DKoKuZGNDEXJuLBgxlsZOmy7SyM4B91WN93PKoLApW2Ar9aX"),
+    create_token(app = "Urban Analytics Book 2", #whatever you named your app
+    consumer_key = "TiLYdBa7xzD3bkCjJGKNQg",
+    consumer_secret = "c3toImz9zCHlkTQbdyHXvb5aOMFVq1B6Jm7rH1bk8hY"),
+    create_token(app = "Urban Analytics Book 3", #whatever you named your app
+    consumer_key = "ikblFNyOrW4kd9pyWnWnUTtY5",
+    consumer_secret = "ky8FOVcKhyIB7mGiMWnpCZSVEgHb3eQUSA2jkLa1QEdQkU7Nd6"),
+    create_token(app = "Urban Analytics Book 4", #whatever you named your app
+    consumer_key = "rIeFN86KtbJVaflYXPFQ2C0QY",
+    consumer_secret = "0eMTAbm6zYc9BLsPbi9nQm877oQrS2fVY5EOrQVxx8qtJWd2uG"))
+```
+
+It is also possible to specify multiple tokens which is helpful as rtweet will use this to automatically mitigate some of the issues with Twitter API limits. An example is shown [here](https://github.com/mkearney/rtweet/blob/master/vignettes/tokens.Rmd) and uses the c() function.
+
+We then want to save the my_tokens object so that we can reuse it later if we create a new R session.
+
+```{r eval=FALSE}
+save(my_tokens, file = "./my_tokens_env") # If you close down R, you can load this in a new session using "load()"
+```
+
+```{r,echo = FALSE}
+load("./my_tokens_env")
+```
+There are many things you can do with the Twitter API (full details available at: [https://dev.twitter.com/rest/public](https://dev.twitter.com/rest/public)). For example, you can access details of a Twitter user such as name, followers, friends, status, etc. For more details, have a look at the [package documentation](https://github.com/mkearney/rtweet/blob/master/vignettes/rtweet.Rmd).
+
+Let's try to get some details of a Twitter account; in this case we will choose the official account for the City of Boulder, CO, USA:
+
+```{r}
+# firstly we need to search for the user
+BCO <- lookup_users('bouldercolorado', token = my_tokens)
+
+# You can print all these details as follows
+BCO
+
+# Or, you can also print specific attributes
+BCO$followers_count #shows the number of followers
+
+```
+
+We will now extract a list of the followers; the token API limit for this is 75,000, so we will add the "n = 'all'" option given that the number of followers is less than this:
+
+```{r}
+#Gets the Twitter IDs of all the BCO followers
+followers_BCO <- get_followers("bouldercolorado", n = 'all',token = my_tokens)
+
+```
+
+Using the follower list we can query again to return further details about these users. However, we need to be careful that we do not exceed the Twitter API limits. It is therefore recommended that you run this as a sample or that you load the R data object that has been created for you based on a query run on 22/12/16.
+
+```{r eval=FALSE}
+# This will pull down the user data for the first 18,000 users which is the limit. You can split the queried users into multiple calls to return the whole list, although you will hit API limits. The following code is commented out, but you can load the object created in the next code block or simply use a sample
+# followers_BCO_Details <- lookup_users(followers_BCO,token = my_tokens)
+# followers_BCO_Details_2 <- lookup_users(followers_BCO[18001:36000,],token = my_tokens)
+# followers_BCO_Details_3 <- lookup_users(followers_BCO[36001:46000,],token = my_tokens)
+# followers_BCO_Details_4 <- lookup_users(followers_BCO[46001:nrow(followers_BCO),],token = my_tokens)
+# Combine all results
+# followers_BCO_Details_All <- rbind(followers_BCO_Details,followers_BCO_Details_2,followers_BCO_Details_3,followers_BCO_Details_4)
+# save(followers_BCO_Details_All,file="./data/followers_BCO_Details_All.Rdata")
+
+#You might also just sample a smaller number of users
+#followers_BCO_Details_Sample <- lookup_users(followers_BCO[sample(1:nrow(followers_BCO),1000),],token = my_tokens)
+```
+
+```{r}
+#Load Follower Details
+load("./data/followers_BCO_Details_All.Rdata")
+```
+
+We can now look at the details of the table generated:
+
+```{r}
+head(followers_BCO_Details_All)
+```
+
+A useful attribute is "location" which is a user specified location for the account. These are distributed as follows, so roughly `r round(nrow(followers_BCO_Details_All[!is.na(followers_BCO_Details_All$location),])/nrow(followers_BCO_Details_All) * 100)` %:
+
+```{r}
+# The use of the is.na() function test if the field location has a missing value; preceeding with an ! inverts the function (i.e. not), so we test how many are not NA
+table(!is.na(followers_BCO_Details_All$location))
+```
+
+We will now limit the dataset to just these records:
+
+```{r}
+followers_BCO_Details_GEO <-followers_BCO_Details_All[!is.na(followers_BCO_Details_All$location),]
+# Show the top 6 rows
+head(followers_BCO_Details_GEO)
+```
+
+## The web as an analytics and mapping platform
+
+Although we covered some aspects of using web enabled infrastructure to conduct remote queries previously (see 2. Data Manipulation in R), there are an array of ways in which different services can be utilized from within R. Here we will explore the ggmap package, which extends the mapping capabilities of ggplot.
+
+In the previous section we created a list of Twitter accounts based on followers of the City of Boulder, CO Twitter account and have limited these to those with user specified locations. If you view these details, it is obvious that these are of variable quality (in terms of actually being places), however, a substantial proportion do relate to geographic locations. First install and load ggmap:
+
+```{r eval=FALSE}
+install.packages("ggmap")
+```
+```{r}
+library(ggmap)
+```
+
+We will now write some code that will attempt to geocode the locations. First we will extract a list of locations and their frequency:
+
+```{r}
+# List frq table of locations
+Locations <- data.frame(table(followers_BCO_Details_GEO$location))
+# Sort in decending order
+Locations <- Locations[order(-Locations$Freq),]
+```
+
+The distribution has a very long tail, with many locations appearing only once. Using the Google geocoding API this has a call limit of 2500 so we will first select all those locations with a frequency over 2 which results in `r nrow(Locations[Locations$Freq > 1,]) ` records. We will then add a random sample of `r nrow(Locations[Locations$Freq > 1,]) - 2500` of the locations with a single frequency. 
+
+```{r}
+# create a sample of locations with a frequency over 1
+A <- Locations[Locations$Freq > 1,]
+# create a sample of locations with a frequency of 1
+B <- Locations[Locations$Freq == 1,]
+#Randomly select rows that when added to A will make the total rows 2500
+B <- B[sample(1:nrow(B),(2500 - nrow(A))),] 
+#Combine the two together and keep just the locations
+sample_locations <- as.character(rbind(A,B)[,"Var1"])
+#Show the first six locations
+head(sample_locations)
+```
+
+Geocoding is managed very simply with the geocode() function, accepting a character object of names to search. This has been commented out as the geocoding has already been run; and we have saved this in the "U_Locations_Geocode.Rdata" object which we also have loaded:
+
+```{r eval=FALSE}
+#geocode sample
+# U_Locations_Geocode <- geocode(sample_locations,output="latlon",source="google")
+# save(U_Locations_Geocode, file = "./data/U_Locations_Geocode.Rdata")
+
+```
+
+```{r}
+# Load the geocoding results
+load("./data/U_Locations_Geocode.Rdata")
+```
+
+Next we need to join the locations to the sample locations - these align as the places within "sample_locations" were geocoded in the order that they appear in the data frame object. As such we can use cbind() to "column bind" the two objects together:
+
+```{r}
+# Column bind the two data frame object
+sample_locations_geocoded <- cbind(sample_locations,U_Locations_Geocode)
+# Show the first 6 rows
+head(sample_locations_geocoded)
+```
+
+We can then append the geocoded results back onto the Locations object:
+
+```{r}
+# Append the geocoded locations
+Locations_GEO <- merge(Locations, sample_locations_geocoded, by.x="Var1",by.y="sample_locations",all.x = TRUE)
+# Remove all the records with no locations
+Locations_GEO <- Locations_GEO[!is.na(Locations_GEO$lat),]
+# Change the column names
+colnames(Locations_GEO) <- c("location","frequency","lon","lat")
+```
+
+We can have a look at these on a map, which shows the main cluster of location clustered around Boulder which is what you might expect.
+
+```{r echo=FALSE}
+library("rgdal")
+library(tmap)
+
+# Create a spatial points data frame
+boulder_SDF <- SpatialPointsDataFrame(coords = cbind(Locations_GEO$lon, Locations_GEO$lat), data = Locations_GEO, proj4string = CRS("+init=epsg:4326"))
+
+#Plot as a symbol map
+m<- tm_shape(boulder_SDF) +
+    tm_bubbles("frequency", title.size = "Users")
+
+# View using leaflet 
+tmap_leaflet(m)
+
+```
+
+### Map context and the web
+
+Although we have previously covered various ways in which we can create maps in R; it is often helpful if we can pull down background maps to help illustrate our cartography. This relies on API again, however these are hidden within the R functions.
+
+We will be using some data from [AirBnB](https://www.airbnb.co.uk/) concerning the locations of property that has been identified by the owners as being within Manhattan, NYC. We will first read in these data.
+
+```{r}
+# Read in data
+listings <- read.csv("./data/listings.csv")
+# Calculate a price per bed
+listings$price_beds <- listings$price / listings$beds
+#Show top six rows
+head(listings)
+```
+
+To plot a base map we use the getmap() function which requires a number of input parameters including "centre" which is a latitude, longitude pair for the centre of the map. For this, we will take mean of the property locations to centre the map. The other parameter required is "zoom" which sets the scale of the map (low number = globe; high number = close to streets). The "maptype" controls the tileset used for the map.
+
+
+```{r,message=FALSE}
+map <- get_map(c(mean(listings$longitude),mean(listings$latitude)),zoom=13,maptype = "roadmap")
+P <- ggmap(map) # Note we have stored the basic map in the new object P
+P
+```
+
+Another way in which we can setup a map is using a keyword rather than a specific lat/lon. For example, the following example will give you a map of Singapore.
+
+```{r,,message=FALSE}
+ggmap(get_map("Singapore",zoom=12,maptype = "roadmap"))
+```
+
+As shown in the previous tutorial, we can control elements of the plot within gglpot, and the same is true for ggmap. For example, if we want to hide the axis:
+
+```{r}
+# Add a series of options onto the previously created object P
+P +  theme(axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.title=element_blank(),
+    axis.ticks = element_blank(),
+    legend.key = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank())
+
+```
+
+We can now add the listings (points) to the map - each one has a latitude and longitude co-ordinate. To begin with we will just show the location of the points. We use the "size" option to adjust the point size.
+
+```{r,message=FALSE,warning=FALSE}
+P + geom_point(data=listings, aes(x=longitude, y=latitude),size=2)
+```
+
+You will see this produces a map, however, also creates a warning about missing values - don't worry, this is just telling you that not all the rows of data in the data frame are visible on the map. You could make this go away if you change the zoom level - i.e. create a map with a greater geographic extent.
+
+You can also adjust the color of the points using the "color" option.
+
+```{r,message=FALSE,warning=FALSE}
+P + geom_point(data=listings, aes(x=longitude, y=latitude, colour=price_beds),size=2)
+```
+
+Because the price per bed is a continuous variable, the points are now scaled along a color gradient from the highest to lowest values. However, this doesn't show you very much, as most of the values are clustered towards the bottom of the range. We can check this by plotting the values as a histogram. Each bar is a $25 bin.
+
+```{r,message=FALSE,warning=FALSE}
+# Plot a histogram
+qplot(price_beds, data=listings, geom="histogram",binwidth=25)
+```
+
+There are a number of ways in which we can adjust our map to make it more effective at communicating changes in price. First we will change the color of the scale to one of the color brewer pallets - for this we use the `scale_color_gradientn()` function. 
+
+```{r,message=FALSE,warning=FALSE}
+# Load colorbrewer
+library(RColorBrewer)
+#Make plot
+P + geom_point(data=listings, aes(x=longitude, y=latitude, colour=price_beds),size=2) + scale_color_gradientn(colours=brewer.pal(9,"YlOrRd")) 
+```
+
+Although the color has changed, we still have the issue with values being clustered at the end of the scale. However, there are a number of additional options that we can use to control for this. The first is "limits" which we can use to adjust the minimum and maximum value on the scale. Here we take the range 75-300.
+
+```{r,message=FALSE,warning=FALSE}
+P + geom_point(data=listings, aes(x=longitude, y=latitude, colour=price_beds),size=2) + scale_color_gradientn(colours=brewer.pal(9,"YlOrRd"),limit=c(75,300)) 
+```
+
+You may have noticed some grey points on the map - these are the properties with values that are outside the ranges specified. We can hide these using a further option "na.value" which you can either assign a color, or as shown in this example, an `NA`, which makes them hidden.
+
+```{r,message=FALSE,warning=FALSE}
+P + geom_point(data=listings, aes(x=longitude, y=latitude, colour=price_beds),size=2) + scale_color_gradientn(colours=brewer.pal(9,"YlOrRd"),limit=c(100,500),na.value=NA) 
+```
+
+We could for example use this technique to just plot the very expensive property, which we will define as between $400-1000.
+
+```{r,message=FALSE,warning=FALSE}
+P + geom_point(data=listings, aes(x=longitude, y=latitude, colour=price_beds)) + scale_color_gradientn(colours=brewer.pal(9,"YlOrRd"),limit=c(400,1000),na.value=NA) 
+
+```
+
+We can also use the "scale" option to change the size of the points. For example, we might want to color the points by the bed type, but scale the points by the price. 
+
+First of all we will just map the bed type - note that the variable which is attached to is a factor, so ggmap (like ggplot) displays this as a categorical value.
+
+```{r,message=FALSE,warning=FALSE}
+P + geom_point(data=listings, aes(x=longitude, y=latitude, colour=bed_type))
+
+```
+
+We can see that most of the AirBnB listings concern real beds; although there are other types across Manhattan. We can extend this plot to explore how these relate to price. Again, we will focus on more expensive property between $400 - $1000. For this we add the "size" parameter to the `aes()` and additionally, use a new function `scale_size()` which controls the range of point sizes used (in this case 3 to 10). You will see that there are two very expensive couches that can be rented!
+
+```{r,message=FALSE,warning=FALSE}
+P + geom_point(data=listings, aes(x=longitude, y=latitude, colour=bed_type,size=price_beds)) + scale_size(range = c(3, 10),limit=c(400,1000))
+```
+
+# Further resources / training
+
+* [Leaflet in R](https://rstudio.github.io/leaflet/map_widget.html) - A package that enables R to generate Leaflet code creating web maps
+* [ggmap: Spatial Visualization with ggplot2](https://journal.r-project.org/archive/2013-1/kahle-wickham.pdf) - an article introducing ggmap with examples

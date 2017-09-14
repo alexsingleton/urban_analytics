@@ -1,0 +1,291 @@
+---
+title: "Data Viz 1: Charts and Graphs"
+output: html_document
+---
+
+##Learning Objectives
+
+By the end of this practical lab you will be able to:
+
+* Make basic plots in R
+* Implement common graph types using the functions of the ggplot2 package
+* Build interactive graphics using the Plot.ly library
+
+## Basic Plotting in Base R
+Base R has functionality that enables the creation of graphics, and although flexible, it is also very common for static graphics to be created using the very popular [ggplot2](http://ggplot2.org/) package. In this practical we will introduce base R functions, ggplot2 and also Plot.ly as a method by which interactive graphics can be created.
+
+First we will read in some 2011 census data for the UK that we will used for the practical.
+
+```{r}
+census <- read.csv("./data/census_small.csv")
+```
+
+This should look as follows...
+
+```{r}
+head(census)
+```
+
+As we showed in an earlier practical (4. Descriptive Statistics), we can provide a summary of the attributes using the summary() function:
+
+```{r}
+summary(census)
+```
+
+However, it is also useful to graphically present the distributions. We can create a histogram using the hist() function, with additional options to specify the labels and color (these use [hex values](http://www.color-hex.com/)).
+
+```{r}
+#Historgram
+hist(census$PCT_Good_Health, col="#00bfff", xlab="Percent", main="Histogram") 
+```
+
+We might also be interested in the relationship between two variables. In the following plot, we show how the proportion of people who identify themselves as in good health within an area relate to the proportion of people who are living within socially rented housing.
+
+```{r}
+plot(census$PCT_Good_Health,census$PCT_Social_Rented_Households,cex=.7,main="Good Health and Social Housing", xlab="% Good Health",ylab="% Social Housing",col="#00bfff",pch=19)
+```
+
+As was shown in a previous practical (see 4. Descriptive statistics), a mean can be calculated as follows:
+
+```{r}
+mean(census$PCT_Good_Health)
+```
+
+We can then use this to test each of numbers contained in the "PCT_Good_Health" column.
+
+```{r}
+census$PCT_Good_Health < mean(census$PCT_Good_Health)
+```
+
+Which returns some TRUE and some FALSE values. We can then combine this with an ifelse() function to create a new variable called "target". The ifelse() returns (rather than TRUE and FALSE) a value specified by the latter two parameters of the function. In this case, these are the strings "Yes" and "No".
+
+```{r}
+# Calculate a target for PCT in good health
+census$target <- ifelse(census$PCT_Good_Health < mean(census$PCT_Good_Health),"Yes","No")
+# Calculate a target for PCT social housing
+census$target2 <- ifelse(census$PCT_Social_Rented_Households < mean(census$PCT_Social_Rented_Households),"Yes","No")
+
+```
+
+You will now see that these values have been added as a new variable in the data frame object:
+
+```{r}
+head(census)
+```
+
+A basic bar chart showing the frequency of zones within each category can be generated as follows:
+
+```{r}
+#Create a table of the results
+counts <- table(census$target)
+
+barplot(counts, main="Target Distribution", xlab="Target",col="#00bfff")
+```
+
+You can also created stacked and side by side bar charts:
+
+```{r}
+#Create a table of the results
+counts <- table(census$target, census$target2)
+
+#Create stacked bar chart
+barplot(counts, main="Target Distribution", xlab="Target",col=c("#00bfff","#00cc66"),legend = rownames(counts))
+
+#Create side by side bar chart
+barplot(counts, main="Target Distribution", xlab="Target",col=c("#00bfff","#00cc66"),legend = rownames(counts),beside=TRUE)
+
+```
+
+We will now read in another dataset that shows the population of different racial groups within [New York City between 1970 and 2010](https://en.wikipedia.org/wiki/Demographic_history_of_New_York_City).
+
+```{r}
+#Read data
+racial <- read.csv("./data/NYC_Pop.csv")
+```
+
+```{r}
+#Create a plot for the total population without an x-axis label
+plot(racial$Population,type = "o", col = "red", xlab = "Year", ylab = "Population", main = "Population over time",xaxt = "n")
+# Add axis label
+axis(1, at=1:5, labels=racial$Year)
+
+```
+
+It is also possible to add multiple lines to the plot using the lines() function:
+
+```{r}
+#Create a plot for the total population without an x-axis label
+plot((racial$White)/100000,type = "o", col = "green", xlab = "Year", ylab = "Population (100k)", main = "Population over time",xaxt = "n",ylim=c(0,max(racial$White/100000)))
+
+lines(racial$Black/100000, type = "o", col = "red")
+lines(racial$Asian/100000, type = "o", col = "orange")
+lines(racial$Hispanic_Latino/100000, type = "o", col = "blue")
+
+# Add axis label
+axis(1, at=1:5, labels=racial$Year)
+
+#Add a legend
+legend("topright", c("White","Black","Asian","Hispanic / Latino"), cex=0.8, col=c("green","red","orange","blue"),pch=1, lty=1)
+
+```
+
+
+## Basic Graphing with ggplot2
+
+The ggplot2 library provides a range of functions that make graphing and visualization of your data both visually appealing and simple to implement. There are two ways in which graphs can be created in ggplot2, the first is ggplot() which we will discuss later, and the second is qlot(), which has a simplified syntax.
+
+```{r}
+library(ggplot2)
+```
+
+
+### Bar Charts
+
+We can first create a bar chart using the factor column ("target") of the data frame object "census". The "geom" attribute is telling `qplot` what sort of plot to make. If you remember from the last practical, the target variable were wards within Liverpool where the percentage of people in good health was less than the city mean.
+
+```{r}
+qplot(target,  data=census, geom="bar")
+```
+
+### Histogram
+
+We can create a histogram by changing the "geom" and variable being plotted. Try adjusting the bin width, which alters the bins into which the values of the "PCT_Social_Rented_Households" column are aggregated.
+
+```{r}
+qplot(PCT_Social_Rented_Households, data=census, geom="histogram",binwidth=10)
+```
+
+### Scatterplot
+
+Another very common type of graph is a scatterplot which will typically plot the values of two continuous variables against one another on the x and y axis of the graph. This graph looks at the relationship between the percentage of people in socially rented housing, and those who are occupied in higher managerial roles. The default plot type is a scatterplot, so note in the next couple of examples we do not include `geom = "point"`, however, this could be added and would return the same result (try it!)
+
+```{r}
+qplot(PCT_Social_Rented_Households, PCT_Higher_Managerial, data = census)
+```
+
+### Adding colours or shapes
+
+In the previous graph, all the points were black, however, if we swap these out for color, we can highlight a factor variable, which in this case is the "target" column.
+
+```{r}
+qplot(PCT_Social_Rented_Households, PCT_Higher_Managerial, data = census,colour=target)
+```
+
+Alternatively, you can also use "shape" to keep the points as black, but alter their shape by the factor variable.
+
+```{r}
+qplot(PCT_Social_Rented_Households, PCT_Higher_Managerial, data = census,shape=target)
+```
+
+### Adding a smoothed line
+If we want to add a trend line to the plot this is also possible by adding an addition parameter to the "geom".
+
+```{r}
+qplot(PCT_Social_Rented_Households, PCT_Higher_Managerial, data = census,geom = c("point","smooth"))
+```
+
+We might also want a simpler linear regression line; which requires two further parameters including "method"" and "formula".
+
+```{r}
+qplot(PCT_Social_Rented_Households, PCT_Higher_Managerial, data = census,geom = c("point","smooth"),method="lm", formula=y~x)
+```
+
+
+### Line Plots
+
+To illustrate how to create line plots we will read in some economic data downloaded from the [Office for National Statistics](http://www.ons.gov.uk/ons/site-information/using-the-website/time-series/index.html#2) which concerns household expenditure since 1948.
+
+```{r}
+household_ex <- read.csv("./data/expenditure.csv")
+```
+
+We can then have a quick look at the data and check on the data class.
+
+```{r}
+head(household_ex)
+str(household_ex)
+```
+
+We can now attempt to plot the data.
+
+```{r}
+qplot(Year, Millions, data = household_ex, geom = "line")
+
+```
+
+### Changing axis and labels
+
+On the y axis, ggplot2 has defaulted to using scientific notation. We can change this, however, we will swap to the main ggplot syntax in order to do this. The first stage is to setup the plot, telling ggplot what data to use, and which "aesthetic mappings" (variables!) will be passed to the plotting function. In fact aes() is a function, however never used outside of ggplot(). This is stored in a variable "p"
+
+```{r}
+p <- ggplot(household_ex, aes(Year, Millions))
+```
+
+If you just typed "p" into the terminal this would return an error as you still need to tell ggplot() which type of graphical output is desired. We do this by adding additional parameters using the "+" symbol.
+
+```{r}
+p + geom_line()
+```
+
+Swapping out the scientific notation requires another package called "scales". Once loaded, we can then add an additional parameter onto the graph.
+
+```{r}
+library(scales)
+p + geom_line() + scale_y_continuous(labels = comma)
+```
+
+We can also change the x and y axis labels
+
+```{r}
+# Add scale labels
+p <- p + geom_line() + scale_y_continuous(labels = comma) + labs(x="Years", y="Millions (£)")
+# Plot p
+p
+```
+
+## Making Interactive Plots
+
+Making an interactive plot is very easy with the plotly() package.
+
+```{r,eval=FALSE}
+install.packages("plotly")
+```
+```{r warning=FALSE}
+#Load package
+library(plotly)
+```
+
+
+Firstly sign up to [Plot.ly online](https://plot.ly/ssu/); and then setup R to use Plot.ly by setting your username and also an API key - this is available [here](https://plot.ly/settings/api), and you need to click the "Regenerate Key" button.
+
+One you have these details, enter these in the Sys.setenv() functions as follows and run:
+
+```{r, eval=FALSE}
+# Set username
+Sys.setenv("plotly_username"="your_plotly_username")
+
+# Set API
+Sys.setenv("plotly_api_key"="your_api_key")
+```
+
+```{r, echo=FALSE}
+# Set username
+Sys.setenv("plotly_username"="alexsingleton")
+
+# Set API
+Sys.setenv("plotly_api_key"="zdaRoCpXgpTpMm423eql")
+```
+
+Making an interactive plot becomes very simple when you already have a ggplot2 object created - earlier we created "p" which we can now make interactive with ggplotly():
+```{r}
+# Create interactive plot
+ggplotly(p)
+```
+
+
+
+# Further resources / training
+
+* [ggplot2](http://docs.ggplot2.org/current/) - details and examples of many different types of plot
+* [plot.ly R examples](https://plot.ly/r/) - lots of examples and code for using R and plot.ly together
+

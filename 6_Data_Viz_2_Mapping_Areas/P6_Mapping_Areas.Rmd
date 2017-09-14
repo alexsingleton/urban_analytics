@@ -1,0 +1,409 @@
+---
+title: "Data Viz 2: Mapping Areas and Context"
+output: html_document
+---
+
+## Learning Objectives
+By the end of this practical lab you will be able to:
+* Map the attributes of areas including contextual points and lines using base R
+* Creating layered maps using ggplot2
+* Creating layered maps using the tmap package
+
+## Making maps in R
+Like most analysis task within R there are a few different ways in we can make maps. In this practical lab we will introduce various ways in which we can map the attribute of areas and contextualize these to build a richer cartography. We will illustrate this through base R, and a series of packages including ggplot2 and tmap.
+
+## Choropleth mapping in base R
+
+Before we can create a map in R, we first need to import some spatial data. We will read in two shapefiles, the first containing polygons that will later be used to create a [choropleth map](https://en.wikipedia.org/wiki/Choropleth_map), and the second some street segments that will be used to provide context.
+
+```{r warning=FALSE,message=FALSE}
+#Load required package
+library(rgdal)
+#Read polygons (creates a SpatialPolygonsDataFrame object)
+LSOA <- readOGR("./data", "E06000042",verbose = FALSE)
+#Read lines (creates a SpatialLinesDataFrame object)
+roads <- readOGR("./data", "Road",verbose = FALSE)
+```
+
+As was shown in the previous practical (see 2. Data Manipulation in R), we can use the plot() function which is built into base R to show the outlines of the polygons contained within the "LSOA" object.
+
+```{r}
+plot(LSOA)
+```
+
+This map shows the Lower Layer Super Output Area boundaries for the city of Milton Keynes, UK. The attributes of the data frame are the overall and domain scores for the  [2015 Index of Multiple Deprivation](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2015).
+
+We will shade in this map using the overall IMD score which is stored in the column "imd_rank". There are a total of 152 values.
+
+```{r}
+LSOA@data$imd_rank
+```
+
+The first step is to find suitable breakpoints for the data contained in the imd_rank column. The continuous data needs to be assigned into categories so different colors can be applied on a choropleth map. There are numerous ways of doing this such as jenks, standard deviations or equal intervals. In this example we use a new function classIntervals() from the "classInt" package to find the ranges needed to divide the the imd_rank into five categories. In this example we use the style "fisher" to specify [jenks](https://en.wikipedia.org/wiki/Jenks_natural_breaks_optimization) as the break point.
+
+```{r,eval=FALSE}
+install.packages("classInt")
+```
+
+```{r}
+# Load package
+library(classInt)
+#Create breaks
+breaks <- classIntervals(LSOA@data$imd_rank, n = 5, style = "fisher")
+```
+
+If we print the object created by the classIntervals() function, a summary is printed showing you what breaks have been assigned, and how many areas are within these ranges.
+
+```{r}
+breaks
+```
+
+We need to choose some colors that we will assign to each of the break points in the data. We will now use another package called "RColorBrewer" which provides a series of color pallets that are suitable for mapping. You can have a look at the color pallets online: http://colorbrewer2.org. Each of these pallets are named; and you can see all the available pallets as follows.
+
+```{r,eval=FALSE}
+install.packages("RColorBrewer")
+```
+
+```{r}
+#Load package
+library(RColorBrewer)
+#Display all pallets
+display.brewer.all()
+```
+
+We will then choose six colors from the pallet "YlOrRd", and print them to the terminal. You will see that the colors are stored as [hex values](http://www.color-hex.com/).
+
+```{r}
+my_colours <- brewer.pal(6, "YlOrRd")
+my_colours
+```
+
+We can then use the function findColours() to select the appropriate color for each of the numbers we intend to map, depending on where these fit within the break points we calculated.
+
+```{r}
+colours_to_map <- findColours(breaks, my_colours)
+```
+
+We can then create a basic map using this list of colors and the `plot()` function again.
+
+```{r}
+plot(LSOA,col=colours_to_map)
+```
+
+We might also want to create a map without the borders, and this can be controlled with an additional parameter which is set to "NA"
+
+```{r}
+plot(LSOA,col=colours_to_map,border = NA)
+```
+
+We can also add additional layers onto the map using a further parameter ("add") which is set to "TRUE". Without the "add=TRUE", every time plot() is called, the previous plot is replaced. Two further parameters are used, "col" to specify the line color, and "lwd" the line width.
+
+```{r}
+plot(LSOA,col=colours_to_map,border = NA)
+plot(roads,add=TRUE, col="#6B6B6B",lwd=0.3)
+```
+
+Another feature that is very common to see on a map is a legend which tells you what values the colors used on the map correspond to. This combines the legend() function with a further function leglabs() (from the maptools package) to create a legend:
+
+```{r eval=FALSE}
+install.packages("maptools")
+```
+```{r warning=FALSE,message=FALSE}
+library(maptools)
+```
+
+
+```{r}
+# Plot choropleth
+plot(LSOA,col=colours_to_map,border = NA)
+# Plot roads
+plot(roads,add=TRUE, col="#6B6B6B",lwd=0.3)
+# Add legend
+legend("bottomleft" ,legend = leglabs(breaks$brks, between = " to "), fill = my_colours, bty = "n",cex=0.6)
+```
+
+
+We will now add some points to the map by creating a new Spatial Points Data Frame as we demonstrated in the previous practical (see 2. Data Manipulation in R):
+
+```{r}
+#Read in the location of schools
+schools <- read.csv("./data/Milton_Keynes_SS_13.csv")
+schools
+```
+
+The new object "schools" contains 13 secondary schools within Milton Keynes, including their Easting and Northing, which are the coordinates of the schools in the [British National Grid](http://www.ordnancesurvey.co.uk/support/the-national-grid.html) projection. Before you can make a spatial data frame, you need to check that there are no records with blank spatial references (i.e. Easting and Northing) - in this example, we use the `subset()` function.
+
+The SpatialPointsDataFrame() function is then specified with the coordinates of the school "coords", which are specified as matrix of values - cbind() is used to "column bind" the Easting and Northing lists together, i.e. so each row is a location. The "data" parameter specifies any attribute data - in this case we just use the original data frame. Finally, the "proj4string" is specified using the CRS() function. These are standard lookups to known as [coordinate systems](http://spatialreference.org/).
+
+
+```{r}
+# Remove those schools without Easting or Northing
+schools <- subset(schools, Easting != "" | Northing != "")
+
+# Create the SpatialPointsDataFrame
+schools_SDF <- SpatialPointsDataFrame(coords = cbind(schools$Easting, schools$Northing), data = schools, proj4string = CRS("+init=epsg:27700"))
+
+```
+
+We can now plot these locations on our map.
+
+```{r}
+plot(LSOA,col=colours_to_map,border = NA)
+plot(roads,add=TRUE, col="#6B6B6B",lwd=0.3)
+plot(schools_SDF, pch = 19, cex = 0.4, col = "#442200",add=TRUE)
+```
+
+### Plotting a subset of the map
+
+Much in the same way that we can subset a data frame, we can also create subsets of the plot. For example, suppose we just wanted to view a map for a a specific Ward in Milton Keynes.
+
+First we will read in the Ward boundaries.
+
+```{r}
+WARD <- readOGR("./data/", "england_cmwd_2011Polygon")
+```
+
+There are 22 wards, which are named as follows.
+
+```{r}
+WARD$name
+```
+
+We can plot and label these as follows. The text() function applies text to the map, specifying three lists including the Easting, Northing and the text labels. The Easting and Northing are derived using the coordinates() function, which for spatial polygons takes the centre of the polygon extent.
+
+```{r}
+plot(WARD)
+text(coordinates(WARD)[, 1], coordinates(WARD)[, 2], labels = WARD@data$name, cex = 0.4)
+```
+
+In the following example we can use the attributes of the spatial data frame to plot just a small area of the total spatial polygons data frame object. For example, to plot just Loughton Park we can use the square brackets to just select a single row that matches the name "Loughton Park"
+
+```{r}
+plot(WARD[WARD@data$name == "Loughton Park",])
+```
+
+This is a useful technique to create a more limited extent. We can use this as follows with some of the previous plots to create a "zoomed in map". Note how we are building the map up as a series of layers.
+
+```{r}
+plot(WARD[WARD@data$name == "Loughton Park",],border=NA) #creates the extent, note that border = NA to make this polygon invisible
+plot(LSOA,col=colours_to_map,border = NA,add=TRUE) #plot the choropleth for the IMD
+plot(roads,add=TRUE, col="#6B6B6B",lwd=0.3) #plot the roads
+plot(schools_SDF, pch = 19, cex = 0.4, col = "#442200",add=TRUE) #plot the schools
+plot(WARD,border="#6B6B6B",add=TRUE)#Add the ward boundaries, however this time they have a colour assigned
+text(coordinates(schools_SDF)[, 1], coordinates(schools_SDF)[, 2], labels = schools_SDF@data$SCHNAME, cex = 0.8,col="#442200",pos=2)
+```
+
+## Choropleth mapping in ggplot2
+
+In the previous practical we introduce ggplot2 (see 5. Data Viz 1: Charts and Graphs), which can also be used to plot maps. The first stage is the extract the polygon boundaries from the spatial polygons object. We do this using the fortify() function; the "region" parameter is the attribute used to split the polygon - in this case the unique ID for each LSOA.
+
+```{r}
+# Load the ggplot2 package
+library(ggplot2)
+# Fortify
+LSOA_FF <- fortify(LSOA, region="LSOA11CD")
+```
+
+We can now have a look at the new data frame object this created.
+
+```{r}
+head(LSOA_FF)
+```
+
+You will see that the polygons have been split up into "groups" which refer to each of the LSOA codes - i.e. what you specified in the "region" attribute. The long and lat are unfortunately named as they are in fact Easting and Northings of the co-ordinates making up the polygon. However, by using the fortify() function we have lost the attribute information, which we can add back onto the object using the merge() function.
+
+```{r}
+LSOA_FF <- merge(LSOA_FF, LSOA@data, by.x = "id", by.y = "LSOA11CD")
+```
+
+We can now use these attributes to create a choropleth map. First we setup the map using ggplot(). We can then tell ggplot how the map should look; firstly stating that the objects are polygons ("+ geom_polygon()"), second that the coordinate system is scaled equally, thus, one coordinate unit north is the same as one unit east for example ("+ coord_equal()"), and then we add some adjustment to the x and y labels, and alter the legend title ("+labs").
+
+```{r}
+Map <- ggplot(LSOA_FF, aes(long, lat, group = group, fill = imd_rank)) +  geom_polygon() + coord_equal() + labs(x = "Easting (m)", y = "Northing (m)", fill = "IMD")
+Map
+```
+
+We can also add layers to the plot as we did in the previous example. First we will create a fortified version of the roads object.
+
+```{r}
+roads_FF <- fortify(roads)
+```
+
+We can then add this to the "Map" object we just created, however we will build this up as layers.
+
+```{r}
+# Create choropleth
+plot1<- c(geom_polygon(data=LSOA_FF, aes(long, lat, group = group, fill = imd_rank)))
+# Create road plot
+plot2<-c(geom_path(data=roads_FF,aes(x=long, y=lat, group=group),size=0.1))
+# Combine the plots
+ggplot()+plot1+plot2+coord_equal()
+```
+
+We can add a further layer for the locations of the schools, and also adjust the color ramp.
+
+```{r}
+# Create school plot
+plot3 <- c(geom_point(data=schools, aes(Easting, Northing,colour='school')))
+# Create combined plot
+ggplot()+plot1+plot2+plot3 + coord_equal() + scale_fill_gradient( low="#473B31", high="#FFFFFF")
+```
+
+It is also possible to control the other elements of the plot using "theme_bw()" which removes many of the visible elements.
+
+```{r}
+#Create a clean plot
+ggplot()+plot1+plot2+plot3 +coord_equal() + scale_fill_gradient( low="#473B31", high="#FFFFFF")  + theme_bw()
+```
+<a id="fullplot"></a>
+However, the plot is still a little cluttered and we can turn off many of the elements using "theme()"
+
+```{r}
+ggplot()+plot1+plot2+plot3 +coord_equal() + scale_fill_gradient( low="#473B31", high="#FFFFFF")  + theme_bw() +
+  theme(axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.title=element_blank(),
+    axis.ticks = element_blank(),
+    legend.key = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank()) + labs(fill = "IMD Rank",colour="") 
+```
+
+## Making basic maps using tmap
+A recent addition to R for creating maps is the [tmap package](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-nutshell.html). This is quite flexible and can be used to create various types of maps and geographic representations with relative simplicity. For someone starting with R, this is probably the simplest entry point. First we will install and load the package:
+
+```{r, eval= FALSE}
+install.packages("tmap")
+```
+```{r}
+library(tmap)
+```
+
+We will first load a shapefile for the Leeds, UK. 
+
+```{r}
+#Read Shapefile
+Leeds <- readOGR("./data","E08000035",verbose = FALSE)
+
+# Have a look at the attributes
+head(Leeds@data)
+```
+
+We will store the map in the "M" object - first we setup the map and projection - note that we use the CRS 27700 which is the code for the British National Grid:
+
+```{r}
+m <- tm_shape(Leeds, projection=27700)
+```
+
+Next we can add a style to the map - this includes the variable to use for coloring ("col="), in this case, the rank of the area by the [Index of Multiple Deprivation](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2015). The style is set as "equal" which relates to how the IMD ranks are broken up into color bins; the border color ("border.col=") and transparency (" border.alpha ="); title and also pallet for the choropleth ("palette = ") which uses the colorbrewer pallets. Finally, the "showNA" option can be set as true or false and relates to whether missing values are shown in the legend.
+
+```{r}
+m <- tm_shape(Leeds, projection=27700) +
+	tm_polygons(col="imd_rank", style="equal",n=5,border.col = "grey50",  border.alpha = .5, title="IMD Quintile", showNA=FALSE,palette="Blues")
+#Print plot
+m
+```
+
+We can then add some final options with tm_layout() to remove the frame around the plot:
+
+```{r}
+m <- tm_shape(Leeds, projection=27700) +
+	tm_polygons(col="imd_rank", style="equal",n=5,border.col = "grey50",  border.alpha = .5, title="IMD Quintile", showNA=FALSE,palette="Blues") +
+  tm_layout(legend.position = c("left", "bottom"), frame = FALSE)
+#Print plot
+m
+```
+
+As with the ggplot2 and base R maps, it is also possible to build up layers and use lines or points to add context to the maps. Here we replicate the map shown [earlier](#fullplot):
+
+```{r}
+# Note, we don't store the results in m this time so the result returned is a plot.
+# Add areas and style
+tm_shape(LSOA, projection=27700) +
+	tm_polygons(col="imd_rank", style="cont",n=5,border.col = "grey50",  border.alpha = .5, showNA=FALSE,palette="Greys",title="IMD Rank") +
+# Add roads
+tm_shape(roads) +
+    tm_lines(lwd=0.1, col="#E8E3E2", scale=5)  +
+    tm_add_legend(type="line", col="#E8E3E2", title="Roads") +
+#Add schools
+tm_shape(schools_SDF) +
+    tm_symbols(size=0.5,shape=20, col="#f7756d") +
+    tm_add_legend(type="symbol", shape=20, col="#f7756d", title="Schools") +
+#Remove the frame and set legend position
+  	tm_layout(legend.position = c("right", "bottom"), frame = FALSE, legend.outside=TRUE)
+```
+
+### Alternative types of map
+
+So far we have only considered creating contextual choropleth maps, however, tmap is also useful to create a number of alternative map types including proportional symbol maps and cartograms. 
+
+First we will import a file of ward centroids which has a "Crimes" attribute that records the number of recorded crimes within the ward during August 2016.
+
+```{r}
+# Read in crime data
+Crimes_SP <- readOGR("./data/","crimes",verbose = FALSE)
+```
+
+The following code first creates the choropleth with tm_polygons(), and then appends the bubbles using tm_bubbles() based on the "Crimes" attribute.
+
+```{r}
+# Plot
+m<- tm_shape(Leeds, projection=27700) +
+	tm_polygons(col="imd_rank", style="equal",n=5,border.col = "grey50",  border.alpha = .5, title="IMD Quintile", showNA=FALSE,palette="Greys") +
+  
+  # Add scaled bubbles
+  tm_shape(Crimes_SP) +
+    tm_bubbles("Crimes", title.size = "Crimes",col="#0EBFE9") +
+
+  # Add legend and remove borders
+  	tm_layout(legend.position = c("left", "bottom"), 
+			  frame = FALSE,legend.text.size = 0.65)
+
+# Plot the map
+m
+```
+
+A further type of map that tmap can create is a cartogram; which is actually imported from the cartogram package. This type of representation scales each of the zones by an absolute measure such as population. Thus, zones with low counts become smaller and high counts larger. There are a lot of algorithms to make [cartograms](https://en.wikipedia.org/wiki/Cartogram), however, the implementation within tmap is the commonly used continuous area cartogram.
+
+We will therefore import some population data and append these to the spatial polygons data frame created earlier called "Leeds":
+
+```{r}
+
+#Read population data
+Leeds_pop <- read.csv("./data/Leeds_Census_2011.csv")
+
+#Join to spatial polygon dataframe
+Leeds <- merge(Leeds, Leeds_pop, by.x = "LSOA11CD", by.y = "Code")
+
+```
+
+The following code creates the cartogram, however, takes a long time to run. If using this function, then this time increases the more complex and large the set of polygons. An alternative but free non R solution is [ScapeToad](http://scapetoad.choros.ch/).
+
+```{r eval=FALSE}
+Leeds_Cartogram <- cartogram(Leeds, "Usual_Residents_2011", itermax = 15, maxSizeError = 1.0001,prepare = "adjust", threshold = 0.05) # Takes a long time to process
+```
+
+```{r echo=FALSE, warning=FALSE,message=FALSE}
+Leeds_Cartogram <- readOGR("./data/","Leeds_Cartogram",verbose = FALSE)
+```
+
+We can now create a map as we did a basic choropleth, however, you will see that the zones are distorted:
+
+```{r}
+#Map
+m <- tm_shape(Leeds_Cartogram) +
+	tm_polygons(col="imd_rnk", style="equal",n=5,border.col = "grey50",  border.alpha = .5, title="IMD Quintile", showNA=FALSE,palette="Blues") +
+    	tm_layout(legend.position = c("left", "bottom"), 
+			  frame = FALSE)
+
+# Plot map
+m
+```
+
+# Further resources / training
+ 
+* [An Introduction to R for Spatial Analysis and Mapping](https://uk.sagepub.com/en-gb/eur/an-introduction-to-r-for-spatial-analysis-and-mapping/book241031) - a great primer on mapping in R
+* [ggplot2 book](http://ggplot2.org/book/) - code and sample chapters for the [book](http://www.springer.com/gb/book/9780387981413)
+* [Scape Toad](http://scapetoad.choros.ch/) - A great tool for creating cartograms

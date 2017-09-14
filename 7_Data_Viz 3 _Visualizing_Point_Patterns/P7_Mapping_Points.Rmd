@@ -1,0 +1,163 @@
+---
+title: "7. Data Viz 3 - Visualizing Point Patterns"
+output: html_document
+---
+
+
+##Learning Objectives
+By the end of this practical lab you will be able to:
+* Create 
+
+
+- binning
+- kde
+
+We will first read some crime data into R for the [City of Chicago, USA](https://data.cityofchicago.org/view/5cd6-ry5g). This contains the recorded crimes during the year 2016 as of 24th December 2016; with the attributes including a category of the crime and a variety of other information such as location and date / time. The following code imports the data, parses the date and time stamp using the base R function strptime() and also ymd_hms() from the package lubridate. We then remove unwanted columns and restrict the results to "BURGLARY".
+
+
+```{r}
+# Import Crimes
+crimes <- read.csv("./data/chicago_crimes_2016.csv")
+
+# Append days, months
+install.packages("lubridate")
+library(lubridate)
+
+#Parse date & time
+crimes$New_Date <- ymd_hms((strptime(crimes$Date, "%m/%d/%Y %I:%M:%S %p",tz="UTC")))
+
+#Subset the data to remove unwanted colums
+crimes <- crimes[crimes$Primary.Type == "BURGLARY",c("ID","Latitude","Longitude","New_Date")]
+
+#View the top of the data
+head(crimes)
+```
+
+We can then see how the burgalaries are distributed by day of the week:
+
+```{r}
+ggplot(data=crimes, aes(wday(crimes$New_Date,label = TRUE))) +
+    geom_bar() +
+    xlab("Day") + 
+    ylab("Burglaries (count)")
+```
+
+Or by month:
+
+```{r}
+ggplot(data=crimes, aes(month(crimes$New_Date,label = TRUE))) +
+    geom_bar() +
+    xlab("Month") + 
+    ylab("Burglaries (count)")
+```
+
+We can also use the facet_grid option within ggplot to produce separate plots for each month; and additionally add an aesthetic to the geom_bar which colors each day differently.
+
+```{r}
+ggplot(data=crimes, aes(wday(crimes$New_Date,label = TRUE))) +
+    geom_bar(aes(,fill=wday(crimes$New_Date,label = TRUE))) +
+    xlab("Day") + 
+    ylab("Burglaries (count)") +
+    facet_grid(~month(crimes$New_Date,label = TRUE)) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),legend.position="none")
+```
+
+Using a similar technique we can also explore the time of the day in which burglaries are recorded broken down into:
+
+```{r}
+#Create a summary data frame of the counts of burglaries by hour time band and quarter of the year
+t <- data.frame(table(hour(crimes$New_Date),quarter(crimes$New_Date)))
+colnames(t) <- c("Time","Quarter","Freq") # Name columns as something sensible
+
+#Create plot
+p <- ggplot(t, aes(x=Time, y=Freq, group=Quarter, colour = Quarter))
+p + geom_line()
+
+```
+
+
+
+
+
+
+
+We will now consider 
+
+```{r}
+
+
+library(ggmap)
+#Plot
+chicago <- get_map(location = "chicago", zoom = 11)
+ggmap(chicago) + geom_point(data = crimes, aes(x = Longitude, y = Latitude))
+```
+
+```{r eval=FALSE}
+install.packages("pointdensityP")
+```
+```{r}
+library(pointdensityP)
+```
+
+
+
+
+```{r}
+# Remove crimes with no lat / lon
+crimes <- crimes[!is.na(crimes$Latitude),]
+
+chicago <- get_map(location = "chicago", zoom = 11)
+
+
+ggmap(chicago, base_layer = ggplot(crimes, aes(x=Longitude, y=Latitude))) +
+coord_cartesian(xlim = c(-87.84918,-87.3)) +
+stat_binhex(bins=20) + 
+theme_bw() +
+theme(axis.line = element_blank(),
+      axis.text = element_blank(),
+      axis.title=element_blank(),
+      axis.ticks = element_blank(),
+      legend.key = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank())
+
+
+
+```
+
+
+```{r}
+
+
+ggmap(chicago, base_layer = ggplot(crimes, aes(x=Longitude, y=Latitude))) +
+stat_bin2d(bins = 20)
+```
+
+
+```{r}
+
+
+  
+ggmap(chicago, base_layer = ggplot(crimes, aes(x=Longitude, y=Latitude))) +
+  stat_density2d(aes(x = Longitude, y = Latitude,fill = ..level..,alpha=..level..), bins = 10, geom = "polygon", data = crimes) +
+  scale_fill_gradient(low = "black", high = "red")
+
+
+```
+
+
+
+```{r}
+# Calculate Density
+density <- pointdensity(crimes,lat_col="Latitude",lon_col="Longitude",grid_size=1,radius=3)
+
+
+
+map_base <- qmap('Chicago', zoom = 11, darken=0.2) 
+map_base + geom_point(aes(x = lon, y = lat, colour = count,alpha=count), 
+    shape = 16, size = 1, data =density) + 
+    scale_colour_gradient(low = "yellow", high = "red") 
+```
+

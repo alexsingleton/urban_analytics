@@ -1,0 +1,449 @@
+---
+title: "Data Manipulation in R"
+output: html_document
+---
+
+##Learning Objectives
+By the end of this practical lab you will be able to:
+
+* Create common objects used to store data
+* Read tabular and spatial data formats into R
+* Subset and merge data
+* Manipulate data and calculate new values
+
+## Matrix and Data Frames
+Two main object types that can be used to store tabular data in R include the data frame and matrix. Data frames can contain input columns that are of multiple types (e.g. character, numeric etc); and a matrix a single type. You can create these within R manually or by reading in other common formats such as spreadsheets or csv files.
+
+A data frame can be created using the data.frame() function.
+
+```{r}
+#Create two vectors
+a <- rep(2010:2017, each = 4) # this uses the rep() function to repeat values
+b <- round(runif(32, 0, 40)) # runif can be used to generate random numbers - in this case between 0 and 40
+#Create data frame
+c <- data.frame(a,b)
+```
+
+You can type c into the console to return the who data frame, however, it you might just want to look at the top few rows. This can be achieved with the head() function:
+
+<a id="data_frame_ex"></a>
+```{r}
+#head returns the top six rows
+head(c)
+```
+
+The matrix() function can be used as follows to create a tabular object of a single data type:
+
+```{r}
+
+#Create a list of numbers
+a <- 1:25 #The colon signifies a range
+a
+
+#Create a matrix with 5 rows and 5 columns
+b <- matrix(a,nrow=5, ncol=5)
+b
+```
+
+It is possible to multiply a numeric matrix by a constant or another matrix
+
+```{r}
+#Multiply b by 10
+b*10
+#Multiply b * b
+b*b
+```
+
+When a matrix prints, the columns and rows show their index as a set of numbers within square brackets. These can be used to extract values from the matrix. These are formatted as [row number, column number]. For example:
+
+```{r}
+#Extract first row
+b[1,]
+#Extract fourth column
+b[,4]
+#Extract third and fourth columns
+b[,3:4] # The colon is used to define a numeric vector between the two numbers
+#Extract first and fourth rows
+b[c(1,5),] # The c() is used to create a numeric vector with the numbers separated by a comma
+#Extract the value in the third row and fourth column
+b[3,4]
+```
+
+In the data frame that you created [earlier](#data_frame_ex), the column and rows were not numbered, however, you can still use the square brackets to extract the values in the same way as a matrix. 
+
+You can also reference the column names themselves using the $ symbol, for example:
+
+```{r}
+#Return all the values in the column called "a"
+c$a
+#A different way of returning the column called "a"
+c[,"a"]
+```
+
+We can also find out what a data frame column names are using the colnames() function:
+```{r}
+colnames(c)
+```
+Or, we can also use the same function to set new column names:
+
+```{r}
+colnames(c) <- c("Year","Count")
+```
+
+
+## Getting External Data into R
+
+For most urban analytics you are more likely to be reading external data into R rather than creating data objects from scratch. Tabular data is commonly stored in text files such as CSV, or on spreadsheets; and explicitly spatial data will likely be stored in formats such as Shapefiles. In this section you will learn how to read data stored in these formats into R.
+
+### Reading Tabular Data
+
+A common way in which data can be stored externally are the the use of .csv files. These are text files, and have a very simple format where columns of attributes are separated by a comma [^1], and each row by a carriage return. 
+
+[^1]: There are a range of different delimiter which can be used in addition to a comma, with the most common being tab; although sometimes characters not commonly used such as bar (|) will be used.
+
+In the following example you will read in some U.S. Census Bureau, 2010-2014 American Community Survey (ACS) 5-Year Estimate data. This was downloaded from the [American Fact Finder](https://factfinder.census.gov) website. The data are for census tracts in San Francisco and relate to median earnings in the past 12 months.
+
+Reading CSV files into R uses the read.csv() function:
+
+```{r}
+#Read CSV file - creates a data frame called earnings
+earnings <- read.csv("./data/ACS_14_5YR_S2001_with_ann.csv")
+
+#Show column headings
+colnames(earnings)
+
+#UID - Tract ID
+#pop - estimated total population over 16 with income
+#pop_m - estimated total population over 16 with income (margin of error)
+#earnings - estimated median earnings
+#earnings - estimated median earnings (margin of error)
+
+```
+
+It is possible to show the structure of the object using the str() function.
+<a id="earnings"></a>
+```{r}
+str(earnings)
+```
+
+This shows that the object is a data frame with 197 rows and 5 variables. For each of the attributes the class is shown (num = numeric; int = integer and Factor, with the number of levels). The read.csv() function guesses the column types when the data are read into R.
+
+One issue you might notice is that the earnings and earnings_m variables have been read in as a Factor. The reason these columns were not read as integers (like the pop and pop_m) column is the presence of two non-numeric values which are shown as "*" and "-". In ACS data these two symbols indicate that the sample sizes were either no sample observations or too few sample observations to make a calculation.
+
+Issues such as these are quite common when reading in external data; and we will look at how this can be corrected later.
+
+Not all tabular data are distributed as textfiles, and another very common format is Microsoft Excel format - .xls or xlsx. Unlike .csv files there are no built in function to read these formats, however, extension packages exist (e.g. XLConnect)
+
+```{r eval=FALSE}
+#Download and install package (make sure that you also have java installed - https://www.java.com/en/download/installed.jsp)
+install.packages("XLConnect")
+```
+```{r message=FALSE}
+#Load package
+library(XLConnect)
+```
+
+The following code downloads an Excel File from the [London Data Store](https://data.london.gov.uk/) and then reads this into R.
+```{r eval=FALSE}
+download.file("https://files.datapress.com/london/dataset/number-bicycle-hires/2016-11-16T08:14:05/tfl-daily-cycle-hires.xls","./data/tfl-daily-cycle-hires.xls")
+```
+```{r}
+#Read workbook
+workbook <- loadWorkbook("./data/tfl-daily-cycle-hires.xls")
+
+#Read the Data Sheet
+cycle_hire <- readWorksheet(workbook, sheet="Data")
+
+```
+
+### Reading Spatial Data
+
+Spatial data are distributed in a variety of formats, but commonly as Shapefiles. These can be read into R using a number of packages, however, is illustrated here with "rgdal". The following code loads a Census Tract Shapefile which was downloaded from the [SF OpenData](https://data.sfgov.org/Geographic-Locations-and-Boundaries/Census-2010-Tracts-for-San-Francisco/rarb-5ahf/data).
+
+```{r eval=FALSE}
+#Download and install package
+install.packages("rgdal")
+```
+```{r message=FALSE}
+#Load package
+library(rgdal)
+
+# Read Shapefile
+SF <- readOGR(dsn = "./data", layer = "tl_2010_06075_tract10")
+```
+
+This has created a SpatialPolygonsDataFrame Reading Spatial Data[^2] object and can view the tract boundaries using the plot() function:
+
+[^2]: If a Shapefile containing points or lines imported into R, then these create SpatialPointsDataFrame or SpatialLinesDataFrame respectively.
+
+<a id="SF_PLOT"></a>
+```{r}
+plot(SF)
+```
+
+The San Francisco peninsula is shown, however, the formal boundaries extend into the ocean and also include the Farallon Islands. For cartographic purposes it may not be desirable to show these extents, and later we will explore how these can be cleaned up.
+
+A SpatialPolygonsDataFrame is an object that contains a series of 'slots' holding different items of data:
+
+```{r}
+#. The slotNames() function prints their names.
+slotNames(SF)
+```
+
+The objects stored within the slots can be accessed using the "@" symbol:
+
+```{r}
+#Show the top rows of the data object
+head(SF@data)
+```
+
+The "data" slot contains a data frame with a row of attributes for each of the spatial polygons contained within the SF object; thus, one each row equates to one polygon. Other slots contain useful information such as the spatial [projection](https://en.wikipedia.org/wiki/Spatial_reference_system).
+
+### Creating Spatial Data
+
+Sometimes it is necessary to create a spatial object from scratch, which is most common for point data given that only a single co-ordinate is required for each feature. This can be achieved using the SpatialPointsDataFrame() function and is used within this example to create a 311 point dataset. 311 data record non emergency calls within the US, and in this case are those which occurred within San Francisco between January and December 2016. The 311 data used here have been simplified from the [original](https://data.sfgov.org/City-Infrastructure/Case-Data-from-San-Francisco-311-SF311-/vw6y-z8j6/data) data to only a few variables, and those calls without spatial references have been removed.
+
+<a id="point_plot"></a>
+```{r}
+# Read csv into R
+data_311 <- read.csv("./data/311.csv")
+# Have a look at the structure
+head(data_311)
+
+# Create the SpatialPointsDataFrame
+SP_311 <- SpatialPointsDataFrame(coords = data.frame(data_311$Lon, data_311$Lat), data = data.frame(data_311$CaseID,data_311$Category), proj4string = SF@proj4string)
+
+# Show the results
+plot(SP_311)
+
+```
+
+
+## Subsetting Data
+
+It is often necessary to subset data; either restricting a data frame to a set of columns or rows; or in the case of spatial data, creating an extract for a particular set of geographic features. Subsetting can occur in a number of different ways
+
+```{r}
+#Create a table of frequencies by the categories used within the 311 data
+table(data_311$Category)
+
+# Use the subset() function to extract rows from the data which relate to Sewer Issues
+sewer_issues <- subset(data_311,Category == "Sewer Issues")
+
+# Use the square brackets "[]" to perform the same task
+sewer_issues <- data_311[data_311$Category == "Sewer Issues",]
+
+# Extract a list of IDs for the "Sewer Issues"
+sewer_issues_IDs <- subset(data_311,Category == "Sewer Issues", select = "CaseID")
+
+```
+
+Subsetting can also be useful for spatial data. In the [example above](#SF_PLOT) the full extent of San Francisco was plotted, however, for cartographic purposes it may be preferable to remove the "Farallon Islands". This has a GEOID10 of "06075980401" which can be used to remove this from a plot:
+
+```{r}
+plot(SF[SF@data$GEOID10 != "06075980401",]) # Removes Farallon Islands from the plot
+```
+
+This can also be quite useful if you want to plot only a single feature, for example:
+
+```{r}
+plot(SF[SF@data$GEOID10 == "06075980401",]) # Only plots Farallon Islands
+```
+
+You can also use the same syntax to create a new object - for example:
+
+```{r}
+SF <- SF[SF@data$GEOID10 != "06075980401",] # Overwrites the SF object
+```
+
+### Clipping Spatial Data
+
+Clipping is a process of subsetting using overlapping spatial data. The following code uses the outline of the coast of the U.S. to clip the boundaries of the SD spatial data frame object:
+```{r message=FALSE}
+#Load library
+library("raster")
+```
+
+```{r message=FALSE}
+#Read in coastal outline (Source from - https://www.census.gov/geo/maps-data/data/cbf/cbf_counties.html)
+coast <- readOGR(dsn = "./data", layer = "cb_2015_us_county_500k")
+
+SF_clipped <- crop(SF, coast) # Clip the the SF spatial data frame object to the coastline
+
+#Plot the results
+plot(SF_clipped)
+
+```
+<a id="clippoint"></a>
+
+We will now perform a similar operation on the SP_311 object:
+```{r message=FALSE}
+library(spatialEco)
+```
+
+```{r}
+SP_311_PIP <- point.in.poly(SP_311, coast) # Clip the the SF spatial data frame object to the coastline
+```
+
+You can now see that this has subset the data to the extent of the peninsula area of San Francisco (see the [previous plot](#point_plot)):
+
+```{r}
+plot(SP_311_PIP)
+```
+
+
+## Merging Tabular Data
+
+So far we have utilized a single data frame or spatial object; however, it is often the case that in order to generate information, data from multiple sources are required. Where data share a common "key", these can be used to combine / link tables together. This might for example be an identifier for a zone; and is one of the reasons why most statistical agencies adopt a standard sets of geographic codes to identify areas.
+
+In the earlier imported data "earnings" this included a UID column which relates to a Tract ID. We can now import an additional data table called bachelors - this also includes the same ID.
+
+
+```{r}
+#Read CSV file - creates a data frame called earnings
+bachelors <- read.csv("./data/ACS_14_5YR_S1501_with_ann.csv")
+
+#UID - Tract ID
+#Bachelor_Higher - Bachelor degree or higher %
+#Bachelor_Higher_m - Bachelor degree or higher % (margin of error)
+
+```
+
+Using the matching ID columns on both datasets we can link them together to create a new object with the merge() function:
+
+```{r}
+#Perform the merge
+SF_Tract_ACS <- merge(x=earnings,y=bachelors,by.x="UID",by.y="UID")
+SF_Tract_ACS <- merge(earnings,bachelors,by="UID")# An alternative method to the above, but a shortened version as the ID columns are the same on both tables
+#You can also use all.x=TRUE (or all.y=TRUE) to keep all the rows from either the x or y table - for more details type ?merge()
+#The combined table now looks like
+head(SF_Tract_ACS) # shows the top of the table
+```
+
+## Removing and Creating Attributes
+
+It is sometimes necessary to remove variables from a tabular object or to create new values. In the following example we will remove some unwanted columns in the SF_clipped object, leaving just the zone id for each polygon.
+
+```{r}
+#Remind yourself what the data look like...
+head(SF_clipped@data)
+
+SF_clipped@data <- data.frame(SF_clipped@data[,"GEOID10"]) #Makes a new version of the @data slot with just the values of the GEOID10 column - this is wrapped with the data.frame() function
+
+#The data frame within the data slot now looks as follows
+head(SF_clipped)
+```
+
+One thing you may not like on this new data frame is the column heading which has got a bit messy. We can clean this up using the colnames() function.
+
+```{r}
+colnames(SF_clipped@data) <- "GEOID10" #Update column names
+head(SF_clipped@data) #Check the updated values
+```
+
+These tract ID are supposed to match with those in the "SF_Tract_ACS" object, however, if you are very observant you will notice that there is one issue; the above have a leading zero.
+
+```{r}
+head(SF_Tract_ACS) # show the top of the SF_Tract_ACS object
+```
+
+As such, in this instance we will create a new column on the SF_Tract_ACS data frame with a new ID that will match the SF GEOID10 column. We can achieve this using the $ symbol and will call this new variable "GEOID10".
+
+```{r}
+# Creates a new variable with a leading zero
+SF_Tract_ACS$GEOID10 <- paste0("0",SF_Tract_ACS$UID)
+head(SF_Tract_ACS)
+```
+
+If you remember from [earlier in this practical](#earnings), the earnings data had some values that were stored as factors rather than numeric or integers, and the same is true for both the bachelors data; and now the combined SF_Tract_ACS object. We can check this again as follows:
+
+```{r}
+str(SF_Tract_ACS)
+```
+
+We can also remove the UID column. A quick way of doing this for a single variable is to use "NULL":
+
+```{r}
+SF_Tract_ACS$UID <- NULL
+```
+
+We will now convert the factor variables to numerics. The first stage will be to remove the "-" and "**" characters from the variables with the gsub() function, replacing these with NA values. This also has the effect of converting the factors to characters.
+
+```{r}
+#Replace the "-" and "*" characters (If you are doing this outside of the US / UK and have a non English locale set, try running Sys.setlocale("LC_ALL","English") before using gsub)
+SF_Tract_ACS$earnings <- gsub("-",NA,SF_Tract_ACS$earnings,fixed=TRUE) #replace the "-" values with NA
+SF_Tract_ACS$earnings_m <- gsub("**",NA,SF_Tract_ACS$earnings_m,fixed=TRUE) #replace the "**" values with NA
+SF_Tract_ACS$Bachelor_Higher <- gsub("-",NA,SF_Tract_ACS$Bachelor_Higher,fixed=TRUE) #replace the "-" values with NA
+SF_Tract_ACS$Bachelor_Higher_m <- gsub("**",NA,SF_Tract_ACS$Bachelor_Higher_m,fixed=TRUE) #replace the "**" values with NA
+```
+
+We will now convert these to numeric values:
+
+```{r}
+SF_Tract_ACS$earnings <- as.numeric(SF_Tract_ACS$earnings)
+SF_Tract_ACS$earnings_m <- as.numeric(SF_Tract_ACS$earnings_m)
+SF_Tract_ACS$Bachelor_Higher <- as.numeric(SF_Tract_ACS$Bachelor_Higher)
+SF_Tract_ACS$Bachelor_Higher_m <- as.numeric(SF_Tract_ACS$Bachelor_Higher_m )
+```
+
+Now all the variables other than the "GEOID10" are stored as integers or numerics:
+
+```{r}
+str(SF_Tract_ACS)
+```
+
+
+## Merging Spatial Data
+
+It is also possible to join tabular data onto a spatial object (e.g. SpatialPolygonsDataFrame) in the same way as with regular data frames. In this example, we will join the newly created SF_Tract_ACS data onto the SF_clipped data frame. 
+
+```{r}
+SF_clipped <- merge(SF_clipped,SF_Tract_ACS, by="GEOID10") # merge
+head(SF_clipped@data)#show the attribute data
+```
+
+### Spatial Joins
+
+[Earlier in this practical](#point_plot) we created a SpatialPointDataFrame which we later cropped using the point.in.poly() function to create the "SP_311_PIP" object. As a reminder of what this looks like it is plotted below:
+
+```{r}
+plot(SP_311_PIP)
+```
+
+We will now clean up the associated data frame by removing all of the attributes apart from the category ("data_311.Category") and then add a sensible column name.
+
+```{r}
+SP_311_PIP@data <- data.frame(SP_311_PIP@data[,"data_311.Category"])#subset data
+colnames(SP_311_PIP@data) <- "Category" #update column names
+```
+
+Although point.in.poly() was used to [clip a dataset to an extent earlier](#clippoint), the other really useful feature of this [point in polygon](https://en.wikipedia.org/wiki/Point_in_polygon) function is that it also appends the attributes of the polygon to the point. For example, we might be interested in finding out which census tracts each of the 311 calls resides within. As such, we will implement another point in polygon analysis to create a new object SF_clipped_311:
+
+```{r}
+SF_clipped_311 <- point.in.poly(SP_311_PIP, SF) # point in polygon
+#Cleanup the attributes
+SF_clipped_311@data <- SF_clipped_311@data[,c("GEOID10","Category")] #note that we don't need to use the data.frame() function as we are keeping more than one column
+#Show the top rows of the data
+head(SF_clipped_311@data)
+```
+
+## Writing out and saving your data
+
+In order to share data it is often useful to write data frames or spatial objects back out of R as external files. This is very simple, and R supports multiple formats. In these examples, a CSV file and a Shapefile are both created.
+
+```{r eval=FALSE}
+#In this example we write out a CSV file from the data slot of the SpatialPointsDataFrame SF_clipped_311
+write.csv(SF_clipped_311@data,"311_Tract_Coded.csv")
+```
+
+This has created a CSV file "311_Tract_Coded.csv" in your working directory; we will use this in the next practical class - "Basic SQL".
+
+It is also possible to write out a Shapefile 
+
+```{r eval=FALSE}
+#This will write out a Shapefile for San Francisco - note, a warning is returned as the column names are a little longer than are allowed within a Shapefile and as such are automatically shortened.
+writeOGR(SF_clipped, ".", "SF_clipped", driver="ESRI Shapefile")
+```
+
+# Further resources / training
+* [R dplyr](https://www.datacamp.com/courses/dplyr-data-manipulation-r-tutorial) - An alternative method of manipulating data in R using the dplyr package

@@ -1,0 +1,335 @@
+---
+title: "Introduction to R"
+output: html_document
+---
+
+##Learning Objectives
+By the end of this practical lab you will be able to:
+
+* Install R and extension packages
+* Calculate new values
+* Set and use variables
+* Understand the different types of operator
+* Create basic conditional statements
+
+##Installing and using R
+R is a statistical programming language which can be downloaded for free and installed on a range of different platforms including Windows, Mac OS and Linux (e.g. Ubuntu). The appropriate installation files for your computer operating system can be downloaded here: [cloud.r-project.org](https://cloud.r-project.org/). Alternatively, if you are using a managed systems (e.g. at a university or office) you might already find R installed.
+
+To make R function, commands are entered into the R terminal, which returns results. The R download contains a lot of pre-built functions referred to as "base R".
+
+R has a slightly different interface when running on either Windows, Mac OS or Linux; however, it is very common for R to be used within an Integrated Development Environment (IDE). The most common of these is R Studio which can be downloaded here: [www.rstudio.com/products/rstudio/#Desktop](https://www.rstudio.com/products/rstudio/#Desktop). R Studio provides a user friendly interface to R, and helps new users by integrating a series of the components of R into a single window interface.
+
+![](rstudio.png)
+
+The R console (terminal) is visible in the bottom left of the interface and commands can be entered directly after the ">". To run a command, after this is type in you press enter/return. For example, try a simple arithmetic:
+
+```{r}
+1+5
+```
+
+The basic R functions can be expanded by installing additional "packages", for example:
+```{r, eval=FALSE}
+#Install / download the package ggplot2
+install.packages("ggplot2")
+#Loads the package which make the functions contained within it available to use
+library(ggplot2)
+```
+
+Sometimes it is useful to store the code you are writing for later reuse. This is quite simple because R code can be stored in text files; these are typically given the extension .R. These files can also be opened within R studio, and can be created using the file menu. Open .R files are shown in the top left window. By highlighting code within this window and clicking the "Run" button, the commands are sent to the console and run. *This is a good way of saving your work!*. There are also other types of files which can be opened or created within R-Studio that produce an excellent way to embed analysis and interpretation in a single document. These are outside the scope of this practical, however, there are some great tutorials available here: [rmarkdown.rstudio.com/](http://rmarkdown.rstudio.com/).
+
+Before starting any R analysis it is useful to see where your working directory has been set. This is the default location where R looks for files to read in or write out (see the next practical - "Data Manipulation in R"). You can check your working directory using the getwd() function:
+
+```{r eval=FALSE}
+getwd()
+```
+You can also set this by entering a directory location using the setwd() function:
+
+```{r eval=FALSE}
+setwd("CHANGE TO FILE PATH")
+```
+
+##Creating Objects and their classes
+
+Objects in R are a way of storing values which can be returned for reuse later in your code. These use the "<-" symbol. For example:
+
+```{r}
+a <- 5
+b <- 10
+a + b
+```
+
+There are a range of different data types which include: numeric, integer, logical, character and complex (which isn't covered here). The following code illustrates how these variables can be assigned and their values checked. Also - note that we can add comments to our code using the "#" symbol - this is not run by the R compiler.
+
+```{r}
+#Creates a variable called z, which stores a numeric value
+z <- 54.8
+class(z) #class function returns the class of the object
+
+#Creates a variable called y, which stores a integer value
+y <- 51
+y #prints the value of a variable 
+
+#Creates variables c and d, then q which stores the output of the logical query
+c <- 5
+d <- 2
+q <- c < d #stores a true / false if d is greater than c
+q
+
+#Creates a variable called s, which stores a character value
+s <- "Hello"
+is.character(s) #a function to check if an object is a character - returns true or false
+```
+
+
+### Converting Between Object Classes
+
+Sometimes it is necessary to convert between different object types, for example, numeric to character or vice versa.
+
+```{r}
+u <- 4 #creates a numeric object
+as.character(u) #Converts the variable to a character, which is visible in the printed result as the number is surrounded by a double quote
+
+i <- "1" #creates a character object
+as.numeric(i) #Converts the character object to a numeric
+```
+
+
+### Vectors
+
+It is also possible to store multiple values of the same data type within an object which are called vectors. These are created using the "c()" function. For example:
+
+```{r}
+# creates a numeric vector
+v_1 <- c(2,3,5,6,7,8,9) 
+v_2 <- c(4,7,9,12,11,1,3) # creates a second numeric vector
+v_1 - v_2 # vectors can be used as variables with operators - this calculates the difference between v_1 and v_2
+v_1 * 10 #vectors can also be combined with constants
+
+# creates a character string vector
+v_3 <- c("I","like","R","it","is","fun")
+```
+
+It is also possible to extract an element of a vector using an index.
+
+```{r}
+#Returns the 4th element of the vector v_3
+v_3[4]
+```
+
+A further type of vector which includes mixed objects types are called "lists".
+
+```{r}
+#Create a mixed list containing two characters, two numbers and a list
+v_4 <- list("A", "B", 4, 5, v_1)
+```
+
+Accessing content of the list happens in the same way as a vector.
+
+```{r}
+# Return the second and fourth element of the list
+v_4[c(2,4)]
+```
+However, in order to reference part of the list directly a double square bracket is needed. This can also be combined with a second square bracket to pull elements of nested list.
+
+```{r}
+#Return the fifth element of the list directly
+v_4[[5]]
+#Return the fifth element of the list directly; then the 3rd and fourth elements of this list
+v_4[[5]][c(3,4)]
+```
+
+### Factors
+Factors are a further object type that R uses to manage nominal and ordinal values. These can be created from vectors; for example:
+
+```{r}
+#Create a nominal vector
+
+n <- c("London","New York","London","New York","Shanghai","Chicago","Chicago")
+is.character(n)
+o <- factor(n)
+# The object o is no longer a character vector
+is.character(o)
+is.factor(o)
+```
+
+It is also possible to check the "levels" used in a factor object; and can also be summarised using the summary function.
+
+```{r}
+levels(o) #returns the levels used int he factor
+summary(o) #returns the count items within the vector coded by each level
+```
+
+Ordinal variables have a slightly different specification; for example:
+
+```{r}
+responses <- c("Very Unhappy", "Unhappy","Very Unhappy", "Unhappy","Very Unhappy", "Unhappy", "Fine", "Happy", "Very Happy", "Fine", "Happy", "Very Happy", "Fine", "Happy", "Very Happy")
+
+p <- factor(responses, levels=c("Very Unhappy", "Unhappy", "Fine", "Happy", "Very Happy"), ordered=TRUE)
+table(p) #Works in the same way as summary
+```
+
+## Working with variables
+
+There are also a series of functions within base R that can work with variables or vectors. Details about how to use any R function can be found by using the "?" command. For example, in the case of "is.character":
+
+```{r}
+?is.character()
+```
+
+
+### Character Functions
+
+```{r}
+#Character functions
+length(v_3) #Return the length of a string
+
+#Find out how many characters each element of a string contains
+nchar(v_3)
+
+#Create a new variable from the 2nd element of the vector v_3
+k <- v_3[2]
+
+#Use the substring function to extract characters between the 2-3rd characters
+substr(k,2,3)
+
+# Substitute an element of a string
+u <- "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+gsub("A","Z",u) #Replace the letter A with Z
+
+#Find the position of a string within a vector
+grep("R",v_3)
+
+#Split a string on a particular character; returns a two element vector
+u_2 <- strsplit(u,"D")
+u_2[1] #prints the first element of the vector
+
+#Concatenate strings
+paste("A","B")#combines the two strings with a space separating
+paste0("A","B")#combines the two strings without a space separating
+
+#Change the case of a string
+tolower(u)
+toupper("hello")
+```
+
+
+###Numeric Functions
+
+```{r}
+
+#Create a 100 random numbers
+h <- runif(100, 0.0, 1.0)
+
+# Min
+min(h)
+
+# Max
+max(h)
+
+# Standard Deviation
+sd(h)
+
+# Mean
+mean(h)
+
+# Median
+median(h)
+
+# Range
+range(h)
+
+#Round Variables
+round(5.75)
+
+#Square Root
+sqrt(5)
+
+#Log10
+log10(23)
+
+```
+
+It is also possible to generate a range of descriptive statistics using a summary function:
+
+```{r}
+summary(h)
+```
+
+### Operators
+
+There are a range of different operators that can be used to work with variables. These include standard arithmetic operators such as + - / * or exponents can be made using a ^.
+
+```{r}
+1 + 3
+3 - 2
+4 / 7
+8 * 2
+2^4
+```
+
+There are also logical operators that include:
+
+```{r}
+
+#Five less than seven?
+5 < 7
+
+#Eight more than 2?
+8 > 2
+
+#7 less than or equal to 5
+7<=5
+
+#2 more than or equal to 2
+2 >= 2
+
+#Is a the same as b
+a <- "Hello"
+b <- "Goodbye"
+a == b
+
+#Is a not equal to b
+a != b
+
+#Does a equal Hello, or b equal Dog?
+(a == "Hello") | (b == "Dog") #returns true because one side of the OR (|) operator is true
+
+#Does a equal Hello and b equal Dog?
+(a == "Hello") & (b == "Dog") #returns false because both sides of the AND (|) operator are not true
+
+```
+
+##Working with conditional statements
+In many analysis tasks there is a need to make decisions based upon a condition being met. These use a range of control structures which commonly include if and else. These are used with with parenthesis, with statements to be run between these being open and closed.
+
+```{r}
+a <- 10
+b <- 15
+
+if(a > b) {#Tests if a is greater than b (it isn't, so returns false)
+   a * 10 #this statement would be run only if the if had evaluated true
+} else { #the else condition is run because the if statement evaluated as false
+  a * 20
+}
+```
+
+## The R Environment
+
+Throughout this practical you have been creating R objects. If you have been doing this within the R Studio interface you will have seen these being created in the top right hand pane. However, you can also see what objects are within the environment using the ls() command.
+
+```{r}
+ls()
+```
+
+You can also save your R environment so that you can reload this later - this uses the save.image() function:
+
+```{r eval=FALSE}
+#Save an image
+save.image("Practical_1.RData")
+#Load an image
+load("Practical_1.RData")
+```
+
+
+# Further resources / training
+* [Introduction to R](https://www.datacamp.com/courses/free-introduction-to-r) - An interactive R tutorial on Data Camp

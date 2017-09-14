@@ -1,0 +1,59 @@
+VariableCode,VariableDescription
+k001,Age 0 to 4
+k002,Age 5 to 14
+k003,Age 25 to 44
+k004,Age 45 to 64
+k005,Age 65 to 89
+k006,Age 90 and over
+k008,Communal establishment
+k009,Single
+k010,Married or civil partnership
+k011,Divorced or Separated
+k012,White
+k013,Mixed/multiple ethnic group
+k014,Indian
+k015,Pakistani
+k016,Bangladeshi
+k017,Chinese and Other
+k018,Black
+k019,Other ethnic groups
+k020,UK and Ireland
+k021,Other EU - 2001
+k022,Other EU - post 2001
+k023,Limited English
+k024,No children household
+k025,Non-dependent children household
+k026,FT student household
+k027,Detached
+k028,Semi-detached
+k029,Terrace
+k030,Flats
+k031,Owned
+k032,Social rented
+k033,Private rented
+k034,Occupancy room <=1
+k036,Provides unpaid care
+k037,Qual L1/2
+k038,Qual L3
+k039,Qual L4+
+k040,School and FT students
+k041,2+ cars
+k042,Public Transport
+k043,Private Transport
+k044,Foot / Bicycle
+k045,Unemployed
+k046,Part-time
+k047,Full-time
+k048,Agriculture
+k049,Mining / construction
+k050,Manufacturing
+k051,Utilities
+k052,Garage
+k053,Haulage / Warehouse
+k054,Accom. and food
+k055,IT
+k056,Finance
+k057,Admin
+k058,Public sector
+k059,Education
+k060,Health

@@ -1,0 +1,563 @@
+---
+title: "Data Viz 4 - Mapping Flows"
+output: html_document
+---
+
+## Learning Objectives
+By the end of this practical lab you will be able to:
+* Manipulate LODES data from census blocks into an aggregate geography
+* Format origin-destination data so that it is suitable for mapping
+* Map flows using base plot and ggpolot
+
+## Interaction data
+The dynamics of urban systems are captured by various types of interaction data with varying degrees of spatio-temporal granularity. In this practical you will explore various ways in which interaction data can be mapped; including the estimation and representation of routes from co-ordinate pairs, mapping GPS trails and how very large origin-destination flows can be summarized.
+
+## Estimating and representing routes
+Many interaction data within cities are simply pairs of origin and destination locations, with some flow recorded between them. A good source of such data which are available within many municipalities relate to the location and flow between bike share docking stations. Many of the operators of these systems now make these data openly available.
+
+We will now read in the September 2015 - August 2016 data from the [Bay Area Bike Share, SF, USA](http://www.bayareabikeshare.com/open-data). Although the original zip files contain other data, we will just read in the data related to the station location and also the use records.
+
+```{r}
+#Read in data
+stations <- read.csv("./data/201608_station_data.csv")
+trips <- read.csv("./data/201608_trip_data.csv")
+```
+
+Each of the stations has various attributes and cover a series of locations within the bay area - in this case, we will subset to only those within San Francisco.
+
+```{r}
+head(stations)
+```
+
+```{r}
+# Limit to SF stations
+stations <- stations[stations$landmark == "San Francisco",]
+```
+
+
+```{r warning=FALSE,message=FALSE}
+library(ggmap)
+```
+
+```{r}
+#Get background map for Chicago
+SanFran <- get_map(location = c(-122.405,37.79), zoom = 14,color = 'bw')
+
+#Basic point plot
+ggmap(SanFran) + geom_point(data = stations, aes(x = long, y = lat, colour = "red")) + 
+theme_bw() +
+theme(axis.line = element_blank(),
+      axis.text = element_blank(),
+      axis.title=element_blank(),
+      axis.ticks = element_blank(),
+      legend.key = element_blank(),
+      legend.position="none",
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank())
+```
+
+Turning now to the trips taken between these origin and destinations, these are ordered within the data frame as a trip per row, with each trip giving a various details including the start and end terminals. Using these data we will create a table of aggregate origin destination flows - however, we will only consider those flows between the stations identified as "San Francisco" and therefore shown on the map above.
+
+```{r}
+# View top six rows of the trips data
+head(trips)
+```
+
+```{r}
+# Get a list of the station IDs within SF
+s_SF <- unique(stations$station_id)
+
+# Limit trips to those with both origin and destination within the SF subset
+trips_SF <- trips[(trips$Start.Terminal %in% s_SF) & (trips$End.Terminal %in% s_SF),]
+
+# Create an table with origins and destination pairs
+OD_trips_SF <- table(trips$Start.Terminal,trips$End.Terminal)
+#View the top six rows
+head(OD_trips_SF)
+```
+
+If you remember from an earlier practical we can convert a table object into a data frame as follows which turns it from a wide to a narrow format:
+
+```{r}
+# Create a data frame of the OD pairs
+OD_trips_SF_Narrow <- data.frame(OD_trips_SF)
+# Create sensible column names
+colnames(OD_trips_SF_Narrow) <- c("Origin","Destination","Trips")
+```
+
+We will now identify the top ten most frequently ridden origin-destination pairs
+
+```{r}
+# Sorts the trips in decending order
+OD_trips_SF_Narrow <- OD_trips_SF_Narrow[order(OD_trips_SF_Narrow$Trips,decreasing = TRUE),]
+# Get the top 10 trips
+top10 <- OD_trips_SF_Narrow[1:10,]
+top10
+```
+
+We will now add origin and destination latitude and longitude co-ordinates by merging with the stations data. First the origin locations:
+
+```{r}
+# Add origin co-ordinates
+top10 <- merge(top10,stations, by.x="Origin",by.y="station_id", all.x=TRUE)
+# Remove unwanted columns
+top10 <- subset(top10, select=c("Origin","Destination","Trips","lat","long"))
+# Change column names
+colnames(top10) <- c("Origin","Destination","Trips","O_lat","O_long")
+```
+
+And then the destinations:
+
+```{r}
+# Add destination co-ordinates
+top10 <- merge(top10,stations, by.x="Destination",by.y="station_id", all.x=TRUE)
+# Remove unwanted columns
+top10 <- subset(top10, select=c("Origin","Destination","Trips","O_lat","O_long","lat","long"))
+# Change column names
+colnames(top10) <- c("Origin","Destination","Trips","O_lat","O_long","D_lat","D_long")
+```
+
+One of the simplest ways of calculating a route is to use the Google maps API which is implemented in the googleway package.
+
+```{r eval=FALSE}
+# Install package
+install.packages("googleway")
+```
+```{r}
+# Load package
+library(googleway)
+```
+
+```{r echo=FALSE}
+key <- "AIzaSyD5YyiOC01UDHRJvpgPE41ar19wqa9ZXAc"
+```
+
+For this you will need to get a [Google maps API](https://developers.google.com/maps/documentation/directions/) key:
+
+```{r eval = FALSE}
+# Set your key
+key <- "your_api_key"
+```
+
+We will then extract an origin destination pair from our top10 object, and then use the google_directions() function to generate a route - this is then converted to a set of lat lon waypoints using decode_pl():
+
+```{r}
+# Using the first origin/destination
+x <- 1 # You can change this between 1 - 10 to view each of the routes
+origin <- c(top10[x,"O_lat"],top10[x,"O_long"])
+destination <- c(top10[x,"D_lat"],top10[x,"D_long"])
+
+# get the directions from Google Maps API
+res <- google_directions(origin = origin,destination = destination,key = key, mode= "bicycling")
+
+# Convert the results to co-ordinates
+df_polyline <- decode_pl(res$routes$overview_polyline$points)
+
+# See the top six rows
+head(df_polyline)
+```
+
+These can then be mapped with ggmap:
+
+```{r}
+ggmap(SanFran) +
+  geom_path(aes(x = lon, y = lat), color = "red", size = 0.5, data = df_polyline, lineend = "round")
+
+```
+
+We can extend the above to run a conditional statement with the for() function which does something (in this case, what is in brackets) until a condition is satisfied. Here loop changes the value of x from 1 to the number of rows in the top10 object (i.e. 10), and for each change in x the code between the { and } is run. For loops are very helpful to run a block of code multiple times.
+
+Because x is changed from 1-10 on each run, we can use this value in various helpful ways, firstly to select a particular row from the data frame top10, and second to act as an ID for each set of routes extracted.
+
+
+```{r}
+
+tmp <-  data.frame(lat = numeric(0), lon = numeric(0), ID = numeric(0), Trips = numeric(0))
+
+for (x in 1:nrow(top10)) {
+
+# Get origins and destinations
+origin <- c(top10[x,"O_lat"],top10[x,"O_long"])
+destination <- c(top10[x,"D_lat"],top10[x,"D_long"])
+  
+# get the directions from Google Maps API
+res <- google_directions(origin = origin,destination = destination,key = key, mode= "bicycling")
+
+# Convert the results to co-ordinates
+df_polyline <- decode_pl(res$routes$overview_polyline$points)
+
+# Add a route ID and Trips to the data frame
+df_polyline$ID <- x
+df_polyline$Trips <- top10[x,"Trips"]
+
+# Append the results to the tmp object
+tmp <- rbind(tmp,df_polyline)
+
+}
+
+
+```
+
+We can now visualize this using the ID as a factor which shows each route as a separate color. 
+
+```{r}
+ggmap(SanFran) +
+  geom_path(aes(x = lon, y = lat,color = as.factor(ID)), size = 0.5, data = tmp, lineend = "round")
+```
+
+To enable some more experimentation with the flow data visualization without having to generate all the potential routes yourself, we have run these already for all origin destination station pairs where the flow was greater than 0. We will load these now:
+
+```{r echo = FALSE, eval = FALSE}
+
+# Create a list of all flows greater than 0 and within SF
+ALL <- OD_trips_SF_Narrow[(OD_trips_SF_Narrow$Origin %in% s_SF) & (OD_trips_SF_Narrow$Destination %in% s_SF),]
+ALL <- ALL[ALL$Trips > 0,]
+ALL <- ALL[ALL$Origin != ALL$Destination,]
+ALL$ID <- 1:nrow(ALL)
+
+# Add origin co-ordinates
+ALL <- merge(ALL,stations, by.x="Origin",by.y="station_id", all.x=TRUE)
+# Remove unwanted columns
+ALL <- subset(ALL, select=c("Origin","Destination","Trips","lat","long"))
+# Change column names
+colnames(ALL) <- c("Origin","Destination","Trips","O_lat","O_long")
+
+
+# Add destination co-ordinates
+ALL <- merge(ALL,stations, by.x="Destination",by.y="station_id", all.x=TRUE)
+# Remove unwanted columns
+ALL <- subset(ALL, select=c("Origin","Destination","Trips","O_lat","O_long","lat","long"))
+# Change column names
+colnames(ALL) <- c("Origin","Destination","Trips","O_lat","O_long","D_lat","D_long")
+
+
+tmp_all <-  data.frame(lat = numeric(0), lon = numeric(0), ID = numeric(0), Trips = numeric(0))
+
+for (x in 1:nrow(ALL)) {
+
+# Get origins and destinations
+origin <- c(ALL[x,"O_lat"],ALL[x,"O_long"])
+destination <- c(ALL[x,"D_lat"],ALL[x,"D_long"])
+  
+# get the directions from Google Maps API
+res <- google_directions(origin = origin,destination = destination,key = key, mode= "bicycling")
+
+# Convert the results to co-ordinates
+df_polyline <- decode_pl(res$routes$overview_polyline$points)
+
+# Add a route ID and Trips to the data frame
+df_polyline$ID <- ALL[x,"ID"]
+df_polyline$Trips <- ALL[x,"Trips"]
+
+# Append the results to the tmp object
+tmp_all <- rbind(tmp_all,df_polyline)
+
+Sys.sleep(time = 1)
+print(x)
+
+}
+
+All_Flows <- tmp_all
+
+save(All_Flows,file="All_Flows.Rdata")
+```
+
+
+```{r}
+# Load flows
+load("./data/All_Flows.Rdata")
+# Show the top six rows of the table
+head(All_Flows)
+```
+
+We can now show these on a map - we use the group option within the aes to tell ggmap that these are id that separate the routes, otherwise the whole set of co-ordinates are interpreted as a single route. You can remove these and generate the plot again to see what happens. 
+
+```{r}
+ggmap(SanFran) +
+  geom_path(aes(x = lon, y = lat, group = ID), data = All_Flows)
+```
+
+For those who know the topography of San Francisco will understand why the Google routes have been calculated to avoid the central area.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/31JgMAHVeg0" frameborder="0" allowfullscreen></iframe>
+
+We can now use the trip information to adjust the plot - for example, to scale the routes by the flow volume. We add the size option, but also divide the flows by 1000 to make the line widths an acceptable size. Thicker lines represent greater flows. We have also added the location of the stations in red.
+
+```{r}
+ggmap(SanFran) +
+  geom_path(aes(x = lon, y = lat, group = ID), data = All_Flows,size = All_Flows$Trips/1000) +
+  geom_point(data=stations, aes(long, lat),colour="red")
+```
+
+There are a lot of other adjustment options, for example, we can darken the map and change the line color:
+
+```{r}
+ggmap(SanFran,darken = 0.8) +
+  geom_path(aes(x = lon, y = lat, group = ID), data = All_Flows, size = All_Flows$Trips/1000, colour = "white") +
+  geom_point(data=stations, aes(long, lat),colour="red")
+
+```
+
+Or color the lines by intensity of flow; plus, we have also added some labels for the station ID using geom_text():
+
+
+```{r}
+ggmap(SanFran,darken = 0.8) +
+  geom_path(aes(x = lon, y = lat, group = ID,colour = All_Flows$Trips), data = All_Flows, size = All_Flows$Trips/1000) +
+  scale_colour_gradient(low="#900C3F", high="#FFC300") +
+  geom_point(data=stations, aes(long, lat),colour="red") +
+  geom_text(data = stations,aes(x = long, y = lat, label = station_id), check_overlap = TRUE, colour="#FFFFFF",hjust=-0.6)
+
+```
+
+We will now clean up this plot by removing the unwanted elements and changing the title of the legend:
+
+```{r}
+ggmap(SanFran,darken = 0.8) +
+  geom_path(aes(x = lon, y = lat, group = ID,colour = All_Flows$Trips), data = All_Flows, size = All_Flows$Trips/1000) +
+  scale_colour_gradient(low="#900C3F", high="#FFC300",name="Trips") +
+  geom_point(data=stations, aes(long, lat),colour="red") +
+  geom_text(data = stations,aes(x = long, y = lat, label = station_id), check_overlap = TRUE, colour="#FFFFFF",hjust=-0.6) +
+  theme (
+		axis.text = element_blank (), 
+		axis.title = element_blank (),
+		axis.ticks = element_blank ()
+		)
+```
+
+
+## Tracking data
+
+In the previous example we estimated the routes that cyclists may have taken as part of a bike share scheme - in reality the true routes taken would be divergent from these estimated paths which are essentially an optimized shortest path (based on how google calculate these for cyclists), and as such are a set of co-ordinates that follow the road topology.
+
+For some urban analytics applications we may have tracking data gathered by GPS. For this example we will use a sample of the [GeoLife data](https://www.microsoft.com/en-us/download/details.aspx?id=52367). This GPS trajectory dataset was collected by 182 users during a period of three years from April 2007 to August 2012, and was part of a Microsoft Research Asia project. We will import a sample of this data which are the records for a single user. There are multiple text files with the file extension ".pit", each of which relate to a different journey. The first six rows of these data can be discarded. 
+
+In total there are 395 of these files which as you could imagine would take a very long time to import one by one. As such, we have written a small block of code that will import these for you and store each imported data frame in a list. This is an alternative to the loop that was presented in the last section.
+
+```{r message=FALSE, warning=FALSE}
+library(lubridate)
+```
+
+```{r}
+# Create a list of the files to import
+file_list <- list.files("./data/GeoLife", full=T)
+count <- length(file_list)
+
+# This function imports a file
+file_con <- lapply(file_list, function(x){
+  tab <- read.table(x, head=F, quote = "\"", skip = 6, sep = ",") # import file
+  colnames(tab) <- c("lat","lon","zero","alt","days","date","time") # change the column headings
+  tab <- subset(tab,select=c("lat","lon","date","time")) # discard unwanted columns
+  tab$date <- ymd(tab$date) # Set the time date
+  tab$time <- hms(tab$time) # Set the time format
+  tab$ID <- strsplit(x,"/|\\.")[[1]][5] # Uses the file name as an ID
+  return(tab)
+})
+
+# Run the function and rbind the data frames together
+file_con_df <- do.call(rbind, file_con)
+```
+
+The imported files are very similar in structure to the combined routes we explored in the last section. However, here, each GPS trail is separated by an ID.
+
+```{r}
+head(file_con_df)
+```
+
+We will first create a simple map of the densest area of the activity:
+
+```{r}
+#Get background map 
+beijing <- get_map(location = c(116.3244, 39.99202), zoom = 13,color = 'bw')
+#Create plot
+ggmap(beijing) +
+  geom_path(aes(x = lon, y = lat, group = ID), data = file_con_df)
+```
+
+With GPS gathered data the tracks can be messy and will not necessarily snap to network features such as paths or road. One way to make a GPS map more readily interpretable we can adjust the alpha of the plot.
+
+```{r}
+ggmap(beijing) +
+  geom_path(aes(x = lon, y = lat, group = ID), data = file_con_df,alpha=0.1)
+```
+
+We can make this clearer by adjusting some of the colors:
+
+
+```{r}
+ggmap(beijing,darken = 0.8) +
+  geom_path(aes(x = lon, y = lat, group = ID), data = file_con_df,alpha=0.1,colour="#FFFFFF") 
+```
+
+We can also use the wday function to split the gps data into weekdays or weekend and see if there are different patterns visible:
+
+```{r}
+ggmap(beijing,darken = 0.8) +
+  # plots the weekday
+  geom_path(aes(x = lon, y = lat, group = ID), data = file_con_df[!wday(file_con_df$date) %in% c(0,7),],alpha=0.1,colour="green") +
+  # plots weekend
+  geom_path(aes(x = lon, y = lat, group = ID), data = file_con_df[wday(file_con_df$date) %in% c(0,7),],alpha=0.1,colour="white")
+```
+
+We can also use a facet grid to visualize the patterns by a temporal period - in this case by hour:
+
+```{r fig.width=7, fig.height=20}
+# Create a new hour of the day variable
+file_con_df$hour <- hour(file_con_df$time)
+
+# Facet plot
+ggmap(beijing,darken = 0.8, legend='none') +
+  geom_path(aes(x = lon, y = lat, group = ID), data = file_con_df,alpha=0.2,colour="white") +
+  facet_wrap(~hour,ncol=3) +
+  theme (
+		axis.text = element_blank (), 
+		axis.title = element_blank (),
+		axis.ticks = element_blank ()
+		)
+```
+
+## Interaction data
+
+At more disaggregate temporal scales flow data are captured within many urban contexts through more traditional survey data or censuses. These commonly are created for questions around home-work locations or migration; and as such for a variety of variables it is often possible to map aggregate flows both internally and within urban systems.
+
+In this final section of the practical we will map some [longitudinal employer-household dynamics](https://lehd.ces.census.gov/data/) data from the US Census Bureau. There are a range of different data within this collection, but for these purposes we will utilize an extract of the origin destination data - LEHD Origin-Destination Employment Statistics (LODES). These are available for each state, however, the extract we consider here is for 2014 in Texas. This is at a block level.
+
+First we will read in the origin-destination data and a cross walk file which gives a list of higher aggregations for the blocks. We have cut down both tables from the full file to save space.
+
+```{r}
+# Import OD
+load("./data/tx_od_main_JT00_2014.Rdata")
+# Import cross walk
+XWalk <- read.csv("./data/tx_xwalk.csv")
+# We will also turn off scientific notation for this example as the block codes are stored as a very large number
+options(scipen=999)
+```
+
+```{r}
+# View top six rows of OD data
+head(OD)
+```
+
+There are a lot of variables within the file, the details of which can be found [here](https://lehd.ces.census.gov/data/lodes/LODES7/LODESTechDoc7.2.pdf); however, for this practical we will just be using "S000" which relates to the total number of jobs alongside the origin (homes - h_geocode) and destination (work - w_geocode) block codes. 
+
+We will view the crosswalk data frame and then we need to append this to the OD data. We merge this twice as the tract codes are needed for both the origin and destination blocks.
+
+```{r}
+# View the top six rows of data
+head(XWalk)
+
+# Merge onto the home block code
+OD <- merge(OD,XWalk, by.x = "h_geocode", by.y = "tabblk2010", all.x= TRUE)
+# Change column names
+colnames(OD) <- c("h_geocode","w_geocode","S000","h_geocode_trct")
+
+# Merge onto the work block code
+OD <- merge(OD,XWalk, by.x = "w_geocode", by.y = "tabblk2010", all.x= TRUE)
+# Change column names
+colnames(OD) <- c("h_geocode","w_geocode","S000","h_geocode_trct","w_geocode_trct")
+
+```
+
+We can then aggregate the flows into the origin and destination tracts:
+
+```{r}
+# Aggregate flows into Tracts
+OD_Tract <- aggregate(data=OD, S000 ~ h_geocode_trct + w_geocode_trct, sum)
+```
+
+Before we can plot the flows we need the location of the tracts, which we can extract from a shapefile of the zone locations:
+
+```{r message=FALSE, error=FALSE}
+library(rgdal)
+```
+
+We will then read in the tract polygons for Texas downloaded from the [US Census Beurueau site](https://www.census.gov/geo/maps-data/data/cbf/cbf_tracts.html):
+
+```{r message=FALSE, error=FALSE}
+# Import spatial data
+TX_SP <- readOGR("./data/Texas_Tract.geojson", "OGRGeoJSON")
+# Convert to WGS84
+TX_SP <- spTransform(TX_SP, CRS("+init=epsg:4326"))
+
+```
+
+We will now have a look at the content of the data frame associated with TX_SP and then use the coordinates() function which extracts the centroid of a zone to build a new lookup:
+
+```{r}
+# View the top 6 rows
+head(TX_SP@data)
+
+# Create lookup table
+TX_tract_centroids <- data.frame(TX_SP@data$GEOID,coordinates(TX_SP))
+# Change column names
+colnames(TX_tract_centroids) <- c("Tract","lon","lat")
+# View the top six rows of the new data
+head(TX_tract_centroids)
+```
+
+We will now merge the tract coordinates onto the tract flow data frame - again, we will do this twice and adjust the column names so both origin and destinations are coded.
+
+```{r}
+# Add home lat lon
+OD_Tract <- merge(OD_Tract,TX_tract_centroids,by.x="h_geocode_trct", by.y="Tract",all.x=TRUE)
+# Fix column names
+colnames(OD_Tract) <- c("h_geocode_trct","w_geocode_trct","S000","h_lon","h_lat")
+
+# Add work lat lon
+OD_Tract <- merge(OD_Tract,TX_tract_centroids,by.x="w_geocode_trct", by.y="Tract",all.x=TRUE)
+# Fix column names
+colnames(OD_Tract) <- c("w_geocode_trct","h_geocode_trct","S000","h_lon","h_lat","w_lon","w_lat")
+```
+
+We can now create a map - we will first create a map connecting tracts with flows of over 70
+
+```{r message=FALSE, error=FALSE}
+# Get base map
+texas <- get_map(location = "Texas", zoom = 6,color = 'bw')
+```
+
+```{r}
+# Create plot
+ggmap(texas) + 
+      geom_segment(data=OD_Tract[OD_Tract$S000 > 70,],aes(y = h_lat, x = h_lon, yend = w_lat, xend = w_lon))
+```
+
+This is a bit messy, but we can improve this plot by adjusting some colors, line widths and transparency:
+
+```{r}
+# Create plot
+ggmap(texas,darken = 0.8) + 
+      geom_segment(data=OD_Tract[OD_Tract$S000 > 70,],aes(y = h_lat, x = h_lon, yend = w_lat, xend = w_lon),colour= "white", alpha= 0.1, size=0.2)
+```
+We will now create a map at a city scale; in this case Houston. We have adjusted some of the parameters again, and also increased the number of origin-destinations:
+
+```{r message=FALSE, error=FALSE}
+# Get base map
+Houston <- get_map(location = "Houston, TX", zoom = 10,color = 'bw')
+```
+```{r}
+# Create plot
+ggmap(Houston,darken = 0.8) + 
+      geom_segment(data=OD_Tract[OD_Tract$S000 > 5,],aes(y = h_lat, x = h_lon, yend = w_lat, xend = w_lon),colour= "white", alpha= 0.01, size=0.2)
+
+```
+
+The problem with this plot is that all the origin destination pairs are being considered uniformly, and there is no consideration of the volume of flows. We can adjust this using the scale_alpha_continuous() option.
+
+```{r}
+# Create plot
+ggmap(Houston,darken = 0.8) + 
+      geom_segment(data=OD_Tract[OD_Tract$S000 > 5,],aes(y = h_lat, x = h_lon, yend = w_lat, xend = w_lon, alpha= S000), size=0.3, colour = "white") +
+  scale_alpha_continuous(range = c(0.004, 0.3))  +
+  theme ( legend.position="none",
+		axis.text = element_blank (), 
+		axis.title = element_blank (),
+		axis.ticks = element_blank ()
+		)
+```
+
+# Further resources / training
+
+* [Mapping flows in R](http://spatial.ly/2015/03/mapping-flows/)
