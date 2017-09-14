@@ -37,6 +37,7 @@ library(knitr)
 ```
 
 ```{r echo=FALSE, results='asis'}
+options(knitr.table.format = "html")
 kable(outline[1:15,])
 ```
 
