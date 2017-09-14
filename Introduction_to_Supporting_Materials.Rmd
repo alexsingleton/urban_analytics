@@ -38,7 +38,7 @@ library(knitr)
 
 ```{r echo=FALSE, results='asis'}
 options(knitr.table.format = "html")
-kable(outline[1:15,])
+kable(outline[1:16,])
 ```
 
 ### Practical labs with chapter links
@@ -46,7 +46,7 @@ kable(outline[1:15,])
 The practical labs are designed to take an average of two hours to complete, although, this will depend greatly on student prior experience and how much the student experiments with the code. The resources used within the practical are all public domain, and for many could be re-created for specific local contexts.
 
 ```{r echo=FALSE, results='asis'}
-kable(outline[16:nrow(outline),],row.names = FALSE)
+kable(outline[17:nrow(outline),],row.names = FALSE)
 ```
 
 

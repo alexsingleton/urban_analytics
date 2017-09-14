@@ -40,6 +40,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <th style="text-align:left;"> C6 </th>
    <th style="text-align:left;"> C7 </th>
    <th style="text-align:left;"> C8 </th>
+   <th style="text-align:left;"> C9 </th>
   </tr>
  </thead>
 <tbody>
@@ -47,6 +48,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:right;"> 1 </td>
    <td style="text-align:left;"> Introduction to Urban Analytics </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -66,6 +68,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 3 </td>
@@ -78,12 +81,14 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 4 </td>
    <td style="text-align:left;"> Traditional data </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -102,6 +107,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 6 </td>
@@ -109,6 +115,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -126,6 +133,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 8 </td>
@@ -134,6 +142,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -150,6 +159,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 10 </td>
@@ -159,6 +169,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -174,6 +185,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 12 </td>
@@ -184,6 +196,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
   </tr>
@@ -198,6 +211,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;"> X </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 14 </td>
@@ -210,10 +224,25 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 15 </td>
    <td style="text-align:left;"> Network Analysis </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 16 </td>
+   <td style="text-align:left;"> Future Urban Analytics </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -243,6 +272,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <th style="text-align:left;"> C6 </th>
    <th style="text-align:left;"> C7 </th>
    <th style="text-align:left;"> C8 </th>
+   <th style="text-align:left;"> C9 </th>
   </tr>
  </thead>
 <tbody>
@@ -250,6 +280,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:right;"> 1 </td>
    <td style="text-align:left;"> Introduction to R </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -269,6 +300,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 3 </td>
@@ -281,12 +313,14 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 4 </td>
    <td style="text-align:left;"> Descriptive statistics </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -305,6 +339,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 6 </td>
@@ -313,6 +348,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -329,12 +365,14 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 8 </td>
    <td style="text-align:left;"> Linking R to the Web </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -353,6 +391,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 10 </td>
@@ -362,6 +401,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -377,6 +417,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 12 </td>
@@ -387,6 +428,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
   </tr>
@@ -401,6 +443,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;"> X </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 14 </td>
@@ -412,6 +455,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
@@ -425,6 +469,7 @@ The practical labs are designed to take an average of two hours to complete, alt
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
+   <td style="text-align:left;">  </td>
   </tr>
 </tbody>
 </table>
