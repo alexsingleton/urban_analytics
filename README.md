@@ -98,7 +98,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
   </tr>
   <tr>
    <td style="text-align:right;"> 5 </td>
-   <td style="text-align:left;"> Urban Computing </td>
+   <td style="text-align:left;"> Data and Computing Software </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
