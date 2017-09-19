@@ -46,7 +46,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
 <tbody>
   <tr>
    <td style="text-align:right;"> 1 </td>
-   <td style="text-align:left;"> Introduction to Urban Analytics </td>
+   <td style="text-align:left;"> An introduction to Urban Analytics </td>
    <td style="text-align:left;"> X </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -59,19 +59,6 @@ Each lecture contains details of the linked book chapter alongside expanded cont
   </tr>
   <tr>
    <td style="text-align:right;"> 2 </td>
-   <td style="text-align:left;"> Data sources and tools </td>
-   <td style="text-align:left;"> X </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;">  </td>
-  </tr>
-  <tr>
-   <td style="text-align:right;"> 3 </td>
    <td style="text-align:left;"> Computing 101 </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -84,7 +71,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 4 </td>
+   <td style="text-align:right;"> 3 </td>
    <td style="text-align:left;"> Traditional data </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
@@ -97,7 +84,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 5 </td>
+   <td style="text-align:right;"> 4 </td>
    <td style="text-align:left;"> New forms of data </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> X </td>
@@ -110,7 +97,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 6 </td>
+   <td style="text-align:right;"> 5 </td>
    <td style="text-align:left;"> Urban Computing </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -123,7 +110,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 7 </td>
+   <td style="text-align:right;"> 6 </td>
    <td style="text-align:left;"> Representation </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -136,7 +123,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 8 </td>
+   <td style="text-align:right;"> 7 </td>
    <td style="text-align:left;"> Urban Visualization </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -149,7 +136,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 9 </td>
+   <td style="text-align:right;"> 8 </td>
    <td style="text-align:left;"> Urban Mapping </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -162,7 +149,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 10 </td>
+   <td style="text-align:right;"> 9 </td>
    <td style="text-align:left;"> Geodemographic Analysis </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -175,7 +162,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 11 </td>
+   <td style="text-align:right;"> 10 </td>
    <td style="text-align:left;"> Urban Indicators </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -188,7 +175,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 12 </td>
+   <td style="text-align:right;"> 11 </td>
    <td style="text-align:left;"> Explanatory Urban Models </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -201,7 +188,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 13 </td>
+   <td style="text-align:right;"> 12 </td>
    <td style="text-align:left;"> Spatial Models </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -214,7 +201,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 14 </td>
+   <td style="text-align:right;"> 13 </td>
    <td style="text-align:left;"> ABM and Cities </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -227,7 +214,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 15 </td>
+   <td style="text-align:right;"> 14 </td>
    <td style="text-align:left;"> Network Analysis </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -240,7 +227,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
    <td style="text-align:left;">  </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> 16 </td>
+   <td style="text-align:right;"> 15 </td>
    <td style="text-align:left;"> Future Urban Analytics </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
