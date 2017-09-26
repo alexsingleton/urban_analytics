@@ -1,4 +1,5 @@
 # Urban Analytics: Supporting Materials
+![](https://github.com/alexsingleton/urban_analytics/raw/master/cover.png)
 
 When writing the Urban Analytics book we made a deliberate choice not to embed code within the narrative of each chapter. The objective of the book was to be illustrative of a series of themes from this emerging field rather than the process of _doing_ urban analytics. We felt that by featuring code in the book would break up the flow of our discussion and illustrations. More practically, a second concern we have with books that heavily embed code is that as a learning resource these are difficult to manage in terms of errors, updates and sharing.
 
