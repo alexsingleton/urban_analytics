@@ -9,9 +9,9 @@ Block,Title,C1,C2,C3,C4,C5,C6,C7,C8,C9
 8, Urban Mapping,,,,X,,,,,
 9, Geodemographic Analysis,,,,,X,,,,
 10, Urban Indicators,,,,,X,,,,
-11, Explanatory Urban Models,,,,,,X,,,
-12, Spatial Models,,,,,,X,,,
-13, ABM and Cities,,,,,,,X,,
+11, Introducing Urban Models,,,,,,X,,,
+12,Explanatory Urban Models,,,,,,X,,,
+13,ABM and Cities,,,,,,,X,,
 14, Network Analysis,,,,,,,,X,
 15,Future Urban Analytics,,,,,,,,,X
 1, Introduction to R,X,,,,,,,,

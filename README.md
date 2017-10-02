@@ -177,7 +177,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
   </tr>
   <tr>
    <td style="text-align:right;"> 11 </td>
-   <td style="text-align:left;"> Explanatory Urban Models </td>
+   <td style="text-align:left;"> Introducing Urban Models </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -190,7 +190,7 @@ Each lecture contains details of the linked book chapter alongside expanded cont
   </tr>
   <tr>
    <td style="text-align:right;"> 12 </td>
-   <td style="text-align:left;"> Spatial Models </td>
+   <td style="text-align:left;"> Explanatory Urban Models </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
