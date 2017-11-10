@@ -1,0 +1,183 @@
+---
+title: "Agent Based Models with R and Netlogo"
+output: html_document
+---
+
+## Learning Objectives
+By the end of this practical lab you will be able to:
+* Understand how to setup and link R to Netlogo
+* Specify and run a basic ABM
+* Export outputs from Netlogo models into R
+
+## Setup and install
+
+You will first need to [download](https://ccl.northwestern.edu/netlogo/5.3.1/) and install the NetLogo software. You will also need at least Java 8 SDK, which can be downloaded [here](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html).
+
+Once installed we will then install the required packages:
+```{r message=FALSE, warning=FALSE, eval=FALSE}
+install.packages("rJava")
+install.packages("RNetLogo")
+```
+
+There are two options for running Netlogo; the first is in headless mode (without GUI), and the second is in GUI mode. If you wish to run the former, you can do this from within your normal R client; however, run "Sys.setenv(NOAWT=1)" before "library("RNetLogo")".
+
+```{r warning=FALSE,message=FALSE}
+Sys.setenv(NOAWT=1)
+library("RNetLogo")
+library("ggplot2")
+```
+
+NetLogo can then be loaded as follows - with the path pointing to the correct installation location.
+
+```{r}
+NLStart("/Applications/NetLogo 6.0.2/Java",gui = FALSE,nl.jarname = "netlogo-6.0.2.jar")
+
+```
+
+In this example we will load the segregation model "Segregation.nlogo":
+
+```{r}
+NLLoadModel("/Applications/NetLogo\ 6.0.2/models/Sample\ Models/Social\ Science/Segregation.nlogo")
+```
+
+It is then possible to control any of the parameters that you could control using the GUI. As a reminder, a screen shot of the model interface is as follows:
+
+![](./seg_model.png)
+
+We can set the density; and then initialize the model (place the initial "turtles") as follows:
+
+```{r}
+# Set the density
+NLCommand("set density 77")
+# Initialize the model
+NLCommand("setup")
+
+```
+
+We can then iterate the model in a number of ways; firstly progressing through a single "tick" as follows:
+```{r}
+NLCommand("go")
+```
+This can be run multiple times, or you can do repeat as follows:
+
+```{r}
+NLDoCommand(5, "go")
+```
+
+It is simple to check how many "ticks" of a model have been run as follows
+
+```{r}
+NLReport("ticks")
+```
+
+We can also extract results from the model ticks; using the "NLDoReport" function to combine action statements - this also supplies a simple calculation to create a % of the agents (turtles) who are unhappy:
+
+```{r}
+# Set model up again
+NLCommand("setup")
+# Unhappy agents at each tick
+unhappy <- NLDoReport(10, "go", "(count turtles with [ not happy? ]) / (count turtles) * 100")
+```
+We can then plot the results:
+```{r}
+# Create a data frame of the results
+unhappy_df <- data.frame(ticks=1:10,unhappy=unlist(unhappy))
+
+# Simple plot
+ggplot(data=unhappy_df, aes(x=ticks, y=unhappy, group=1)) +
+  geom_line()+
+  geom_point()+
+  scale_x_discrete(limits=1:10)
+```
+
+For many Netlogo models, these "complete" when some parameter is reached. In the case of the segregation models this is when there are no unhappy agents. Rather than specifying the number of ticks it is possible to let a model run to completion, making the test to check if there are any unhappy agents (turtles).
+
+Also note in this run that we use the option to output a data frame rather than to create this manually:
+
+```{r}
+#Setup the model
+NLCommand("set density 70")
+NLCommand("set %-similar-wanted 70")
+NLCommand("setup")
+
+#Run to completion
+unhappy_df_70 <- NLDoReportWhile("any? turtles with [ not happy? ]", "go", c("ticks", "(count turtles with [ not happy? ]) / (count turtles) * 100","70"),as.data.frame = TRUE)
+```
+
+We can now test the effect of different levels of the preference for similar neighbors.
+
+
+```{r}
+#Setup the model
+NLCommand("set density 70")
+NLCommand("set %-similar-wanted 60")
+NLCommand("setup")
+
+#Run to completion
+unhappy_df_60 <- NLDoReportWhile("any? turtles with [ not happy? ]", "go", c("ticks", "(count turtles with [ not happy? ]) / (count turtles) * 100","60"),as.data.frame = TRUE)
+
+#Setup the model
+NLCommand("set density 70")
+NLCommand("set %-similar-wanted 50")
+NLCommand("setup")
+
+#Run to completion
+unhappy_df_50 <- NLDoReportWhile("any? turtles with [ not happy? ]", "go", c("ticks", "(count turtles with [ not happy? ]) / (count turtles) * 100","50"),as.data.frame = TRUE)
+
+```
+
+We can then combine the results and create a plot:
+
+```{r}
+#Combine the results
+unhappy_df_all <- rbind(unhappy_df_50,unhappy_df_60,unhappy_df_70)
+colnames(unhappy_df_all) <- c("ticks","unhappy","threshold")
+unhappy_df_all$threshold <- factor(unhappy_df_all$threshold)
+
+# Simple plot
+ggplot(data=unhappy_df_all, aes(x=ticks, y=unhappy, group=threshold,colour=threshold)) +
+  geom_line()+
+  geom_point()+
+  scale_x_discrete(limits=1:max(unhappy_df_all$ticks))
+
+```
+
+In this final example we load a model that performs a simple function to demonstrate a randomly walking agent. It is possible to use a loop, and for each iteration (tick), extract the location of the agent. These can be brought back into R and plotted.
+
+First we can load the model:
+
+```{r}
+NLLoadModel("/Applications/NetLogo\ 6.0.2/models/Code\ Examples/Random\ Walk\ Example.nlogo")
+```
+
+Next we can setup the model, and create an empty dataframe that will be used to store the agent locations.
+
+```{r}
+NLCommand("setup")
+
+#Get agent locations
+paths <- data.frame(xcor=NA,ycor=NA)
+```
+
+The model is then run for 200 ticks, and the locations extracted.
+
+```{r}
+# Run for 200 steps
+for(x in 1:200){
+  NLDoCommand(1, "go") # Advance one tick
+  paths <- rbind(paths,NLGetAgentSet(c("xcor", "ycor"), "turtles")) #get co-ordinate for tick
+}
+```
+
+In order to create a plot, the ticks are added to the locations and are then used to color the path of the agent in a plot.
+
+```{r}
+# Add ticks on paths
+paths <- paths[-1,]
+paths$ticks <- 1:nrow(paths)
+
+# Create plot
+ggplot(data=paths, aes(x=xcor, y=ycor,colour=ticks)) +
+  geom_path()+
+  geom_point()
+```
