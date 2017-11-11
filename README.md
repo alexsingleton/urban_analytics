@@ -266,7 +266,7 @@ The practical labs are designed to take an average of two hours to complete, alt
 <tbody>
   <tr>
    <td style="text-align:right;"> 1 </td>
-   <td style="text-align:left;"> [Introduction to R](/01_Introduction_to_R/P1_Introduction_to_R.html) </td>
+   <td style="text-align:left;"> &lt;a href=&quot;/01_Introduction_to_R/P1_Introduction_to_R.html&quot;&gt;Introduction to R&lt;/a&gt; </td>
    <td style="text-align:left;"> X </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>

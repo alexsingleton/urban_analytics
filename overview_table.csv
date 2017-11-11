@@ -14,7 +14,7 @@ Block,Title,C1,C2,C3,C4,C5,C6,C7,C8,C9
 13,ABM and Cities,,,,,,,X,,
 14, Network Analysis,,,,,,,,X,
 15,Future Urban Analytics,,,,,,,,,X
-1, [Introduction to R](/01_Introduction_to_R/P1_Introduction_to_R.html),X,,,,,,,,
+1," <a href=""/01_Introduction_to_R/P1_Introduction_to_R.html"">Introduction to R</a>",X,,,,,,,,
 2, Data Manipulation in R,,X,X,,,,,,
 3, Basic SQL,,X,X,,,,,,
 4, Descriptive statistics,,X,,,,,,,
