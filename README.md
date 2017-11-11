@@ -247,7 +247,6 @@ Each [lecture](/Slides/) is linked to a book chapter. At the end of each book ch
 
 The practical labs are designed to take an average of two hours to complete, although, this will depend greatly on student prior experience and how much the student experiments with the code. The resources used within the practical are all public domain, and for many could be re-created for specific local contexts.
 
-
 <table>
  <thead>
   <tr>
@@ -267,7 +266,7 @@ The practical labs are designed to take an average of two hours to complete, alt
 <tbody>
   <tr>
    <td style="text-align:right;"> 1 </td>
-   <td style="text-align:left;"> [Introduction to R](/01_Introduction_to_R/P1_Introduction_to_R.html) </td>
+   <td style="text-align:left;"> Introduction to R </td>
    <td style="text-align:left;"> X </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
@@ -462,5 +461,6 @@ The practical labs are designed to take an average of two hours to complete, alt
   </tr>
 </tbody>
 </table>
+
 
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
