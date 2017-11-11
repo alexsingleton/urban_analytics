@@ -5,6 +5,7 @@ output: html_document
 
 ## Learning Objectives
 By the end of this practical lab you will be able to:
+
 * Understand how to setup and link R to Netlogo
 * Specify and run a basic ABM
 * Export outputs from Netlogo models into R
