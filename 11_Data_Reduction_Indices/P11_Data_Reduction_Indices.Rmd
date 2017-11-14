@@ -1,0 +1,249 @@
+---
+title: "Data Reduction - Indices"
+output: html_document
+---
+
+## Learning Objectives
+
+By the end of this practical lab you will be able to:
+
+* Rank and normalise an input dataset
+* Create the domains of index using equal weights
+* Rank and normalize the domains for creating the overall index
+* Visualise the new index using `tmap`
+
+## Composite Indicators
+
+Composite indicators are popular tools for measuring the performance of complex phenomena (deprivation, environment quality, human development etc.) that are not directly measurable. 
+They are constructed for many purposes, such as monitoring implemented policies, communication to the public, and generating ranking scores for tracking the performance of countries as well as local authorities. 
+The steps for constructing a composite indicator are not easily distinguishable because most of the time are depending on the phenomenon under investigation and the data sources. Thus,the Organization for Economic Co-operation and Development (OECD) published [the Handbook on constructing composite indicators](http://www.oecd.org/els/soc/handbookonconstructingcompositeindicatorsmethodologyanduserguide.htm) which provides a detailed guidance and highlights the necessary steps for building a composite indicator.
+
+In this practical, you will create a composite index of accessibility to health promoting/negating areas in the Great Britain at the level of Lower Super Output Areas (LSOAs); using open data provided by the [CDRC services](https://data.cdrc.ac.uk/dataset/access-to-healthy-assets-and-hazards-ahah). The new index will have three domains: access to health services, access to retail services with negating effect to health and the physical environment. Also, you will use two popular methods for normalising the variables and the domains: a) the Rank-based normalisation, known as [Rankit](http://digitalcommons.wayne.edu/jmasm/vol8/iss2/9) and b) the exponential transformation adopted by the Index of Multiple Deprivation 2015 (see [the technical report](https://www.gov.uk/government/publications/english-indices-of-deprivation-2015-technical-report))
+
+
+## Load data and Preparation
+
+First, you will load the `data.csv` csv file (also, available online [here](https://data.cdrc.ac.uk/dataset/access-to-healthy-assets-and-hazards-ahah)) which includes a set of variables related to the access to services and the quality of environment:
+
+| Field name | Units | Description |
+|------------|-------|-------------|
+|lsoa11| - | LSOA 2011 code |
+|gamb_d| Mean distance (km) |Gambling outlets|
+|ffood_d| Mean distance (km) |Fast food outlets|
+|pubs2_d| Mean distance (km) |Pubs/bars/nightclubs|
+|off2_d| Mean distance (km) |Off licenses|
+|tobac_d| Mean distance (km) |Tobacconists|
+|gpp_d| Mean distance (km) |GP surgeries|	
+|ed_d| Mean distance (km) |A&E Hospitals|
+|dent_d| Mean distance (km) |Dentists|
+|pharm_d| Mean distance (km) |Pharmacies| 
+|leis_d| Mean distance (km) |Leisure Centers|
+|no2|Annual mean (µgm^3)  |Nitrogen Dioxide|
+|pm10|Annual mean (µgm^3)  |Particulate Matter|
+|so2|Annual mean (µgm^3)  |Sulphur Dioxide|
+|green900| m^2  |Green Spaces|
+
+
+```{r}
+# Load input data
+data <- read.csv("data.csv")
+head(data)
+
+```
+
+The first stage in the analysis is to standardise the indicators producing ranks from best to worst. Therefore, you will use the `rank` function and set the `ties.methods = "min"`. This way   `min` assigns every tied element of your variable to the lowest rank (for more information type `?rank`).
+```{r}
+# Ranking 
+data$gpp_rank <- rank(data$gpp_d,ties.method= "min")
+data$ed_rank <- rank(data$ed_d,ties.method= "min")
+data$dent_rank <- rank(data$dent_d,ties.method= "min")
+data$pharm_rank <- rank(data$pharm_d,ties.method= "min")
+data$leis_rank <- rank(data$leis_d,ties.method= "min")
+
+data$gamb_rank <- rank(data$gamb_d,ties.method= "min")
+data$ffood_rank <- rank(data$ffood_d,ties.method= "min")
+data$pubs2_rank <- rank(data$pubs2_d,ties.method= "min")
+data$off2_rank <- rank(data$off2_d,ties.method= "min")
+data$tobac_rank<- rank(data$tobac_d,ties.method= "min")
+
+data$g900_rank <- rank(data$green900,ties.method= "min")
+data$no2_rank <- rank(data$no2,ties.method= "min")
+data$pm10_rank <- rank(data$pm10,ties.method= "min")
+data$so2_rank <- rank(data$so2,ties.method= "min")
+
+```
+Some of the ranked indicators will have an inverse direction, where lowest value refers to a worst rank. This is something you have to address by looking into the literature and identify the direction of each variable (e.g. accessibility to fast food outlets were identified as health negating,whereas accessibility to A&E Hospitals were health promoting). In this practical, the direction of each indicator is given by the following table: 
+
+
+|Domain|Indicator|Low value       |High value|
+|------|---------|----------------|----------|
+|Retail Environment|Accessibility to Fast food outlets|-|+|
+||Accessibility to Gambling outlets|-|+|
+||Accessibility to Off-licenses|-|+|
+||Accessibility to Tobacconists|-|+|
+||Accessibility to Pubs, bars and nightclubs|-|+|
+|Health Services|    Accessibility to GP practices|+|-|
+||Accessibility to A&E hospitals|+|-|
+||Accessibility to Pharmacies|+|-|
+||Accessibility to Dentist practices|+|-|
+||Accessibility to Leisure services|+|-|
+|Physical Environment|Accessibility to Green spaces|-|+|
+||Nitrogen Dioxide (NO2)|+|-|
+||PM10 Particles|+|-|
+||Sulphur Dioxide (SO2)|+|-|
+
+Thus, you will have to invert the ranking.
+```{r}
+# Invert ranking
+data$gamb_rank <- rank(-data$gamb_rank) 
+data$ffood_rank <- rank(-data$ffood_rank) 
+data$pubs2_rank <- rank(-data$pubs2_rank) 
+data$off2_rank <- rank(-data$off2_rank) 
+data$tobac_rank <- rank(-data$tobac_rank)
+
+data$g900_rank <- rank(-data$g900_rank) 
+
+```
+
+
+Now that you have standardise each indicator, you can proceed to the step of normalisation. The Rankit rank-based normalisation will be used here because outperforms other rank-based methods ([Solomon, S., R., & Sawilowsky, S. S.,2009](http://digitalcommons.wayne.edu/jmasm/vol8/iss2/9)).
+
+Therefore, you will create the `norm_default` function which requires two parameters: a) the ranked variable as `x` and b) the data.frame as `y` 
+```{r}
+# FUNC: Rankit rank-based normalisation
+norm_default <- function(x,y){(x-0.5)/nrow(y)} 
+```
+
+Next, you will use the `norm_default` function for normalising each of your indicators and transform them to a standard normal distribution using the `qnorm` function.
+```{r}
+# Rankit rank-based normalisation
+data$gpp_norm <- norm_default(data$gpp_rank, data)
+data$gpp_norm <- qnorm(data$gpp_norm, mean = 0, sd = 1)
+
+data$ed_norm <- norm_default(data$ed_rank, data)
+data$ed_norm <- qnorm(data$ed_norm, mean = 0, sd = 1)
+
+data$dent_norm <- norm_default(data$dent_rank, data)
+data$dent_norm <- qnorm(data$dent_norm, mean = 0, sd = 1)
+
+data$pharm_norm <- norm_default(data$pharm_rank, data)
+data$pharm_norm <- qnorm(data$pharm_norm, mean = 0, sd = 1)
+
+data$gamb_norm <- norm_default(data$gamb_rank, data)
+data$gamb_norm <- qnorm(data$gamb_norm, mean = 0, sd = 1)
+
+data$ffood_norm <- norm_default(data$ffood_rank, data)
+data$ffood_norm <- qnorm(data$ffood_norm, mean = 0, sd = 1)
+
+data$pubs2_norm <- norm_default(data$pubs2_rank, data)
+data$pubs2_norm <- qnorm(data$pubs2_norm, mean = 0, sd = 1)
+
+data$leis_norm <- norm_default(data$leis_rank, data)
+data$leis_norm <- qnorm(data$leis_norm, mean = 0, sd = 1)
+
+data$g900_norm <- norm_default(data$g900_rank, data)
+data$g900_norm <- qnorm(data$g900_norm, mean = 0, sd = 1)
+
+data$off2_norm <- norm_default(data$off2_rank, data)
+data$off2_norm <- qnorm(data$off2_norm, mean = 0, sd = 1)
+
+data$tobac_norm <- norm_default(data$tobac_rank, data)
+data$tobac_norm <- qnorm(data$tobac_norm, mean = 0, sd = 1)
+
+data$no2_norm <- norm_default(data$no2_rank, data)
+data$no2_norm <- qnorm(data$no2_norm, mean = 0, sd = 1)
+
+data$pm10_norm <- norm_default(data$pm10_rank, data)
+data$pm10_norm <- qnorm(data$pm10_norm, mean = 0, sd = 1)
+
+data$so2_norm <- norm_default(data$so2_rank, data)
+data$so2_norm <- qnorm(data$so2_norm, mean = 0, sd = 1)
+
+```
+
+## Create domains and index
+
+Then, the indicators within each domain are put together using equal weights and forming the domain scores. We use equal weights because there is no clear justification for different weightings.
+
+```{r}
+# Domain scores
+data$r_domain <- (0.20 * data$gamb_norm +
+                  0.20 * data$ffood_norm +
+                  0.20 * data$pubs2_norm +
+                  0.20 * data$off2_norm +
+                  0.20 * data$tobac_norm)
+
+data$h_domain <- (0.20 * data$gpp_norm +
+                  0.20 * data$ed_norm +
+                  0.20 * data$dent_norm +
+                  0.20 * data$pharm_norm +
+                  0.20 * data$leis_norm)
+
+data$e_domain <- (0.25 * data$g900_norm + 
+                  0.25 * data$no2_norm + 
+                  0.25 * data$pm10_norm + 
+                  0.25 * data$so2_norm)
+```
+
+Once again, you will have to standardise the three domains using the `rank` function.
+```{r}
+# Domain ranks
+
+data$r_rank <- rank(data$r_domain,ties.method= "min")
+
+data$h_rank <- rank(data$h_domain,ties.method= "min")
+
+data$e_rank <- rank(data$e_domain,ties.method= "min")
+
+```
+To calculate the overall index, we follow an aspect of the methodology from the 2015 English Index of Multiple Deprivation [(Smith et al., 2015)](https://www.gov.uk/government/publications/english-indices-of-deprivation-2015-technical-report).You will rank each domain R and scale it to the range [0,1]. R=1/N is defined as the most ‘health promoting’ LSOA and R=N/N for the least promoting (N is the number of LSOAs in Great Britain). Exponential transformation of the ranked domain scores is then applied to LSOA values to reduce ‘cancellation effects’. So, for example, high levels of accessibility in one domain are not completely cancelled out by low levels of accessibility in a different domain. The exponential transformation applied also puts more emphasis on the LSOAs at the end of the health demoting side of the distribution and so facilitates identification of the neighbourhoods with the worst health promoting aspects. The exponential transformed indicator score X is given by:
+
+$$X = -23 \ln ⁡(1-R (1-\exp^{(-100/23)}))$$
+
+where ‘ln’ denotes natural logarithm and ‘exp’ the exponential transformation.
+
+To implement this method, you will create the `exp_trans` function which requires two parameters: a) the ranked domain as `x` and b) the data.frame as `y`.
+
+```{r}
+# FUNC: Exponential transformation
+exp_trans <- function(x,y){-23*log(1-(x/nrow(y))*(1-exp(-100/23)), base = exp(1))}
+
+```
+Next, you will use the `exp_trans` function for normalising each of your domains.
+```{r}
+# Exponential transformation
+data$r_exp <- exp_trans(data$r_rank,data)
+data$h_exp <- exp_trans(data$h_rank,data)
+data$e_exp <- exp_trans(data$e_rank,data)
+```
+The final step is to bring together the tree domains and create an overall index. 
+```{r}
+# Composite index scores
+data$index_sc <- (0.333 * data$r_exp + 
+                  0.334 * data$h_exp +
+                  0.333 * data$e_exp)
+```
+
+## Mapping the new index
+
+To Map the new index you will use the `lsoa11.shp` shapefile, merge it with the `data` data.frame and then use the `tmap` package to create a quantile map of the new index.
+
+```{r}
+# Merge LSOA boundaries to the new index
+library(sp)
+library(rgdal)
+lsoa <- readOGR('.', 'lsoa11')
+head(lsoa@data)
+
+sdf <- merge(lsoa, data, 'lsoa11')
+
+# Use tMap library for mapping the new index
+library(tmap)
+
+qtm(sdf,fill="index_sc",fill.style="quantile", fill.palette="Blues", borders = NULL)
+
+```
+
+
+
+
