@@ -14,11 +14,11 @@ By the end of this practical lab you will be able to:
 
 ## Composite Indicators
 
-Composite indicators are popular tools for measuring the performance of complex phenomena (deprivation, environment quality, human development etc.) that are not directly measurable. 
-They are constructed for many purposes, such as monitoring implemented policies, communication to the public, and generating ranking scores for tracking the performance of countries as well as local authorities. 
-The steps for constructing a composite indicator are not easily distinguishable because most of the time are depending on the phenomenon under investigation and the data sources. Thus,the Organization for Economic Co-operation and Development (OECD) published [the Handbook on constructing composite indicators](http://www.oecd.org/els/soc/handbookonconstructingcompositeindicatorsmethodologyanduserguide.htm) which provides a detailed guidance and highlights the necessary steps for building a composite indicator.
+Composite indicators are popular tools for measuring aspects of urban environments that are not directly measurable. Examples might include: deprivation, environment quality, human development etc.
+They are constructed for many purposes, such as monitoring implemented policies, communication to the public, and comparison within and between different municipalities. 
+There is also not one method or approach to building an indicator, and the exact specification of methods are influenced both by the intended domain of application and the available data that might be selected as input. Thus,the Organization for Economic Co-operation and Development (OECD) published [the Handbook on constructing composite indicators](http://www.oecd.org/els/soc/handbookonconstructingcompositeindicatorsmethodologyanduserguide.htm) which provides some extended guidance and highlights some exemplar steps for building a composite indicator.
 
-In this practical, you will create a composite index of accessibility to health promoting/negating areas in the Great Britain at the level of Lower Super Output Areas (LSOAs); using open data provided by the [CDRC services](https://data.cdrc.ac.uk/dataset/access-to-healthy-assets-and-hazards-ahah). The new index will have three domains: access to health services, access to retail services with negating effect to health and the physical environment. Also, you will use two popular methods for normalising the variables and the domains: a) the Rank-based normalisation, known as [Rankit](http://digitalcommons.wayne.edu/jmasm/vol8/iss2/9) and b) the exponential transformation adopted by the Index of Multiple Deprivation 2015 (see [the technical report](https://www.gov.uk/government/publications/english-indices-of-deprivation-2015-technical-report))
+In this practical, you will create a small area composite index of accessibility to health promoting/negating influences in the Great Britain at the level of Lower Super Output Areas (LSOAs); using open data provided by the [CDRC services](https://data.cdrc.ac.uk/dataset/access-to-healthy-assets-and-hazards-ahah). The new index will have three domains: access to health services, access to retail services with negating effect to health and the physical environment. Also, you will use two popular methods for normalising the variables and the domains: a) the Rank-based normalisation, known as [Rankit](http://digitalcommons.wayne.edu/jmasm/vol8/iss2/9) and b) the exponential transformation adopted by the Index of Multiple Deprivation 2015 (see [the technical report](https://www.gov.uk/government/publications/english-indices-of-deprivation-2015-technical-report)).
 
 
 ## Load data and Preparation
@@ -72,7 +72,7 @@ data$pm10_rank <- rank(data$pm10,ties.method= "min")
 data$so2_rank <- rank(data$so2,ties.method= "min")
 
 ```
-Some of the ranked indicators will have an inverse direction, where lowest value refers to a worst rank. This is something you have to address by looking into the literature and identify the direction of each variable (e.g. accessibility to fast food outlets were identified as health negating,whereas accessibility to A&E Hospitals were health promoting). In this practical, the direction of each indicator is given by the following table: 
+Some of the ranked indicators will have an inverse direction, where lowest value refers to a worst rank. This is something you have to address by looking into the literature and identify the logical direction of each variable (e.g. accessibility to fast food outlets were identified as health negating,whereas accessibility to A&E Hospitals were health promoting). In this practical, the direction of each indicator is given by the following table: 
 
 
 |Domain|Indicator|Low value       |High value|
@@ -92,7 +92,7 @@ Some of the ranked indicators will have an inverse direction, where lowest value
 ||PM10 Particles|+|-|
 ||Sulphur Dioxide (SO2)|+|-|
 
-Thus, you will have to invert the ranking.
+Thus, you will have to invert the ranking for some variables.
 ```{r}
 # Invert ranking
 data$gamb_rank <- rank(-data$gamb_rank) 
@@ -106,7 +106,7 @@ data$g900_rank <- rank(-data$g900_rank)
 ```
 
 
-Now that you have standardise each indicator, you can proceed to the step of normalisation. The Rankit rank-based normalisation will be used here because outperforms other rank-based methods ([Solomon, S., R., & Sawilowsky, S. S.,2009](http://digitalcommons.wayne.edu/jmasm/vol8/iss2/9)).
+Now that you have standardise each indicator, you can then proceed to the step of normalisation. The Rankit rank-based normalisation will be used here because outperforms other rank-based methods ([Solomon, S., R., & Sawilowsky, S. S.,2009](http://digitalcommons.wayne.edu/jmasm/vol8/iss2/9)).
 
 Therefore, you will create the `norm_default` function which requires two parameters: a) the ranked variable as `x` and b) the data.frame as `y` 
 ```{r}
@@ -163,7 +163,7 @@ data$so2_norm <- qnorm(data$so2_norm, mean = 0, sd = 1)
 
 ## Create domains and index
 
-Then, the indicators within each domain are put together using equal weights and forming the domain scores. We use equal weights because there is no clear justification for different weightings.
+Then, the indicators within each domain are combined using equal weights and forming the domain scores. We use equal weights because there is no clear justification in this case for different weightings.
 
 ```{r}
 # Domain scores
@@ -196,7 +196,7 @@ data$h_rank <- rank(data$h_domain,ties.method= "min")
 data$e_rank <- rank(data$e_domain,ties.method= "min")
 
 ```
-To calculate the overall index, we follow an aspect of the methodology from the 2015 English Index of Multiple Deprivation [(Smith et al., 2015)](https://www.gov.uk/government/publications/english-indices-of-deprivation-2015-technical-report).You will rank each domain R and scale it to the range [0,1]. R=1/N is defined as the most ‘health promoting’ LSOA and R=N/N for the least promoting (N is the number of LSOAs in Great Britain). Exponential transformation of the ranked domain scores is then applied to LSOA values to reduce ‘cancellation effects’. So, for example, high levels of accessibility in one domain are not completely cancelled out by low levels of accessibility in a different domain. The exponential transformation applied also puts more emphasis on the LSOAs at the end of the health demoting side of the distribution and so facilitates identification of the neighbourhoods with the worst health promoting aspects. The exponential transformed indicator score X is given by:
+To calculate the overall index, we follow an aspect of the methodology from the 2015 English Index of Multiple Deprivation [(Smith et al., 2015)](https://www.gov.uk/government/publications/english-indices-of-deprivation-2015-technical-report).You will rank each domain R and scale it to the range [0,1]. R=1/N is defined as the most ‘health promoting’ LSOA and R=N/N for the least promoting (N is the number of LSOAs in Great Britain). Exponential transformation of the ranked domain scores are then applied to LSOA values to reduce ‘cancellation effects’. So, for example, high levels of accessibility in one domain are not completely cancelled out by low levels of accessibility in a different domain. The exponential transformation applied also puts more emphasis on the LSOAs at the end of the health demoting side of the distribution and so facilitates identification of the neighbourhoods with the worst health promoting characteristics. The exponential transformed indicator score X is given by:
 
 $$X = -23 \ln ⁡(1-R (1-\exp^{(-100/23)}))$$
 
@@ -226,7 +226,7 @@ data$index_sc <- (0.333 * data$r_exp +
 
 ## Mapping the new index
 
-To Map the new index you will use the `lsoa11.shp` shapefile, merge it with the `data` data.frame and then use the `tmap` package to create a quantile map of the new index.
+To Map the new index you will use the `lsoa11.shp` shapefile, merge it with the `data` data.frame and then use the `tmap` package to create a quantile map of the new index and the three domains in Liverpool (`LAD code: E08000012`). 
 
 ```{r}
 # Merge LSOA boundaries to the new index
@@ -235,13 +235,27 @@ library(rgdal)
 lsoa <- readOGR('.', 'lsoa11')
 head(lsoa@data)
 
-sdf <- merge(lsoa, data, 'lsoa11')
+sdf <- merge(lsoa, data[,c(1,50:53)], 'lsoa11')
 
 # Use tMap library for mapping the new index
 library(tmap)
+library(gridExtra)
+library(grid)
 
-qtm(sdf,fill="index_sc",fill.style="quantile", fill.palette="Blues", borders = NULL)
+# Map of the Retail services domain
+p1 <- qtm(sdf[sdf@data$lad =="E08000012",],fill="r_exp",fill.style="quantile", fill.palette="Blues", borders = NULL)
 
+# Map of the Health services domain
+p2 <- qtm(sdf[sdf@data$lad =="E08000012",],fill="h_exp",fill.style="quantile", fill.palette="Greens", borders = NULL)
+
+# Map of the Physical Environment domain
+p3 <- qtm(sdf[sdf@data$lad =="E08000012",],fill="e_exp",fill.style="quantile", fill.palette="Oranges", borders = NULL)
+
+# Map of the overall index
+p4 <- qtm(sdf[sdf@data$lad =="E08000012",],fill="index_sc",fill.style="quantile", fill.palette="-RdYlBu", borders = NULL)
+
+# Arrange the maps into a 2x2 grid
+tmap_arrange(p1, p2, p3, p4)
 ```
 
 
