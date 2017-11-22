@@ -18,12 +18,14 @@ options(scipen = 999)
 ```
 
 ## Learning Objectives
+
 By the end of this practical lab you will be able to:
 
-* Calculate descriptive statistics and draw figures
+* Calculate some descriptive statistics and plot distributions
 * Perform some basic data cleaning and identify missing values
 * Explore correlations between variables
 * Plot maps showing the distribution and spatial patterns of observations
+
 
 
 ## Exploratory data analysis
@@ -134,7 +136,6 @@ However, note that increasing granularity offers more insight but diminishes our
 
 
 ## Correlation
-
 
 Correlation is another concept useful in identifying relationships and exploring urban phenomena. Simply put, correlation is how a variable changes when another variable changes. _"Correlation measures"_ or _"measures of association"_ are the outcomes of statistical methods used to quantify the relationship between two or more variables. 
 
@@ -250,7 +251,8 @@ cor.test(x, y, method = "pearson")
 
 The test suggest that the correlation is indeed significant at > 95% confidence, as shown by the p-value. Sometimes correlation may be high but not very significant, especially if the number of observations is quite small. It is also important to remember that not all measures of correlation are appropriate for all variables. Pearson correlation is a parametric technique, meaning it will only work correctly if the relationship between variables is linear, both variables are be normally distributed and that values around the regression line are evenly distributed (homoscedasticity). There are many statistical textbooks and [online resources](https://en.wikipedia.org/wiki/Correlation_and_dependence) available that explore these concepts in more detail.
 
-The base functions in R includes two more common measures of correlation, Spearman rank correlation and Kendall rank correlation, which are non-parametric, but are designed to calculate strength of association when variables are ordinal. The UK Index of Multiple Deprivation (IMD), for instance, is rank-based, meaning that each area is ranked from worst to best based on various measures of deprivation, so a Pearson correlation between i.e. IMD rank and income would be meaningless. 
+The base functions in R includes two more common measures of correlation, Spearman rank correlation and Kendall rank correlation, which are non-parametric, but are designed to calculate strength of association when variables are ordinal. The [UK Index of Multiple Deprivation](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2015), for instance, is rank-based meaning that each area is ranked from worst to best based on various measures of deprivation, so a Pearson correlation between i.e. rank and income would be meaningless. 
+
 
 ## Spatial Associations
 
@@ -300,13 +302,9 @@ Spatial autocorrelation measures can be computed with a number of measures; this
 
 In this case we will further explore the relationships between location and magnitude using a _spatial regression model_. However, these models can be quite complex, so before that we will look at simple regression models first.
 
- 
-# Further resources / training
+
+## Further resources / training
 
 There are a lot of publications and online resources that provide a more in-depth analysis of spatial relationships. A good introductory text is Quantitative Geography by Fotheringham, Brunsdon and Charlton. 
 
 * Fotheringham, A.S., C. Brunsdon and M. Charlton (2000). Quantitative Geography, Perspectives on Spatial Data Analysis. London: Sage Publications.
-
-If you are more interested in spatial econometrics, you may also find most of Anselin's work quite interesting.
-
-* L. Anselin. “Spatial Statistical Modeling in a GIS Environment,” In D. Maguire, M. Goodchild and M. Batty (Eds.), GIS, Spatial Analysis and Modeling. Redlands, CA, ESRI Press, 2005: 93-111.
