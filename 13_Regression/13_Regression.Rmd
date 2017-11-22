@@ -19,13 +19,17 @@ options(scipen = 4)
 ```
 
 ## Learning Objectives
-By the end of this practical lab you will be able to:
-* Perform simple and multiple regression using OLS
-* Map OLS residuals
-* Calulate a contiguity spatial matrix
-* Perform some basic spatial regression
 
-## Regression
+By the end of this practical lab you will be able to:
+
+* Perform Simple and Multiple Regression using OLS
+* Explore OLS residuals
+* Caclulate a Contiguity Spatial Matrix
+* Perform some basic Spatial Regression
+
+
+
+## Regression Basics
 
 Along with descriptive statistics and plots, obtaining correlation measures between variables is often very helpful in understanding the underlying patterns of our observations, selecting variables, and generally aid in the "exploratory data analysis" stage of our modelling. 
 
@@ -33,14 +37,15 @@ While correlation gives us an idea on the level of association between two varia
 
 For instance, suppose we are exploring insurance penetration in Phoenix, Arizona. Regression will help us identify how much insurance levels will change when i.e. employment rates also change. Simple linear regression is typically a function of the form:
 $$ y = \alpha + \beta x + \varepsilon $$
-where $y$ is the variable we are trying to predict, called _dependent_ variable and $x$ is the variable that is used to make the prediction, called _independent_ variable. In a regression model, a dependent variable $y$ would thus be equal to $\alpha$, which is a number called _intercept_, plus $\beta$ times the independent variable, which is called _coefficient_ of $x$, plus the term $\varepsilon$. The latter is essential; within socio-economic phenomena it is extremely rare for one variable to completely predict another one without error, so value $\varepsilon$ describes the error of our model.
+where $y$ is the variable we are trying to predict, called _dependent_ variable and $x$ is the variable that is used to make the prediction, called _independent_ variable. In a regression model, a dependent variable $y$ would thus be equal to $\alpha$, which is a number called _intercept_, plus $\beta$ times the independent variable $x$, which is called _coefficient_, plus the error term $\varepsilon$. The latter is essential; within socio-economic phenomena it is extremely rare for one variable to completely predict another one without error, so value $\varepsilon$ describes the error of our model.
 
 Suppose in this case our dependant variable is insurance ratio and our independent (or predictor) variable is unemployment rate. Let's start by loading all necessary libraries and data into R.
 
 ```{r results='hide', message=FALSE, warning=FALSE}
 # Load libraries
 library(RColorBrewer)
-library(rgdal) 
+library(rgdal)
+library(sp) 
 library(spdep)
 library(tmap) 
 ```
@@ -60,7 +65,7 @@ In this case, variable _pct\_insur_ shows the percentage of population with insu
 In R, a linear regression model can be fitted with the built-in `lm()` function (several libraries provide much more advanced models). This function accepts formulas which can be denoted by the `~` character. We can also easily visualise the actual the data points and the plot the regression line using `plot()` and `abline()` respectively.
 
 
-```{r fig.width=6, fig.height=6}
+```{r fig.width=7, fig.height=5}
 # Perform regression on insurance using unemployment as the independent variable
 insurance.model <-  lm(pct_insur ~ pct_unemp, data = insurance.data, na.action=na.exclude)
 summary(insurance.model)
@@ -68,14 +73,17 @@ summary(insurance.model)
 plot(insurance.data$pct_insur, insurance.data$pct_unemp, 
      xlab = "% Insured",  
      ylab = "% Unemployed",
-     main = "Linear Regression of Population Insured in Phoenix, Arizona",
+     main = "Linear Regression of Population Insured in Phoenix, AZ",
      col = rgb(0, 0, 0, 0.2), pch = 16)
 abline(insurance.model, col = "blue")
 ```
 
 At first glance it seems that unemployment rate does not give us a great predition of insurance levels. The output on the console gives some information on the model parameters. Of particular importance is the significance level of the independent variable (in this case unemployment is significant at > 99.9% probability), and the _R-squared_ or usually the _Adjusted R-squared_ which is 0.2336. In general, higher values of R-squared suggest that the model has a greater explanatory performance than lower values. In this case an R-squared of 0.2336 suggests that the model explains ~23% of the variation of Insurance levels.
 
-There is still ~77% of variation that our model does not explain. Typically, we try to account for this variation using additional predictor variables. This type of regression is called _multiple regression_.
+
+## Multiple Regression
+
+There is still ~77% of variation that our model does not explain. Typically, we try to account for this variation using additional predictor variables. This type of regression is called _Multiple Regression_.
 
 
 ```{r}
@@ -88,12 +96,12 @@ summary(insurance.model)
 
 This model appears to explain the variability of insurance levels better, since the adjusted R-squared is 0.7268. However, some of the variables are not so significant, as indicated by each p-value. The p-value for each independent variable tests the null hypothesis that this variable has no correlation with the regression's dependent variable. These variables are thus not good "predictors" of the dependant variable.
 
-In this case, variable _pct\_white_ has very low significance (p = 0.5752) while _pct\_65over_ is marginally significant (p = 0.0801), which suggest that their correlation is not very significant. In most fields, the desired significance should be > 95%. As such we will exclude these two variables and re-run our regression. In this instance we will add information on median income, _med\_inc_, as well.
+In this case, variable _pct\_white_ has very low significance (p = 0.5752) while _pct\_65over_ is marginally significant (p = 0.0801), which suggest that their correlation is not very significant. In most fields, the desired significance should be > 95%. As such we will exclude these two variables and re-run our regression. In this instance we will add information on median income, _med\_income_, as well.
 
  
 ```{r}
 # Perform regression on insurance using multiple predictor variables
-insurance.model <-  lm(pct_insur ~ pct_unemp + pct_mar + pct_hisp + med_inc, 
+insurance.model <-  lm(pct_insur ~ pct_unemp + pct_mar + pct_hisp + med_income, 
                        data = insurance.data,
                        na.action=na.exclude)
 summary(insurance.model)
@@ -101,9 +109,12 @@ summary(insurance.model)
 
 Now all variables are significant at > 99% and our R-squared is at 0.737, which for most regression purposes is considered a fair model. A critical evaluation at this point however is to check the "residuals" of our model, which can be simply defined as the _error_ term of the regression model descibed earlier.
 
+
+## Residual Plots
+
 Without going into too many mathematical details, in order for a regression model to be valid the error of a regression model should be random (stochastic). Homoscedasticity, i.e. that the error term does not change with the values of the independent variable, is one of the critical assumptions of regression models. 
 
-[Residual plots](http://docs.statwing.com/interpreting-residual-plots-to-improve-your-regression/) are a useful way of validating this concept. In OLS, residuals should not be systematically high or low for a portion of values but centered on zero throughout the range of $y$. We can return the predicted values and residuals of a linear regression model by using the `predict` and `resid` functions.
+[Residual plots](http://docs.statwing.com/interpreting-residual-plots-to-improve-your-regression/) are a useful way of validating this concept. In OLS, residuals should not be systematically high or low for a portion of values but centered on zero throughout the range of $y$. We can return the predicted values and residuals of a linear regression model by using the `predict()` and `resid()` functions.
 
 ```{r}
 # Make a data frame with actual, predicted and residual values
@@ -139,7 +150,7 @@ We can check these spatial patterns by looking at the _residuals_ from the OLS, 
 
 In order to perform spatial regression, the topological relationships of our entities (e.g. points, polygons etc) are needed; usually a shapefile with the data attached in enough to calculate the spatial weight and spatial lag matrix.
 
-We can load shapefile data into R using the `readOGR` function. The resulting object has many sub-classes that we can easily retrieve using the `@` character. For instance, we can retrieve the data subclass of an shapefile object with `shapefile@data`.
+We can load shapefile data into R using the `readOGR()` function. The resulting object has many sub-classes that we can easily retrieve using the `@` character. For instance, we can retrieve the data subclass of an shapefile object with `shapefile@data`.
 
 
 ```{r}
@@ -156,7 +167,7 @@ We can add the OLS residual values to the data object of the shapefile:
 insurance.shp@data$ols_resid <-  resid(insurance.model)
 ```
 
-And make a choropleth map of the residuals
+And make a choropleth map of the residuals:
 
 ```{r}
 # Make map of residuals
@@ -179,7 +190,7 @@ sp.matrix <- poly2nb(insurance.shp, queen=TRUE)
 sp.weights <- nb2listw(sp.matrix, style='W', zero.policy=TRUE)
 ```
 
-A queen matrix means that associations are calculated diagonally as well (8 directions); in the case of polygons, a common point will suffice. We can visualise the associations by plotting a line between each neighboroing polygon centroid.
+A queen matrix means that associations are calculated diagonally as well (8 directions); in the case of polygons, a common point will suffice. We can visualise the associations by plotting a line between each neighboring polygon centroid, obtained with the `coordinates()` function.
 
 ```{r}
 # We can visualise spatial connections with the following map
@@ -189,7 +200,7 @@ plot(sp.matrix, coordinates(insurance.shp),
      add=TRUE) # this argument plots the second map on top of the first one
 ```
 
-Using the spatial matrix we can calculate the _I_ statistic; based on the p-value below we can reject the null hypothesis that there is no spatial autocorrelation in our residuals, which suggests we will have to use a different approach.
+Using the spatial matrix we can calculate the _I_ statistic with the `moran.mc()` function. bBased on the p-value below, we can reject the null hypothesis that there is no spatial autocorrelation in our residuals, which suggests we will have to use a spatial approach to the regression.
 
 ```{r}
 # Fix NAs to zero
@@ -200,9 +211,9 @@ resid_moran[is.na(resid_moran)] <- 0
 moran.mc(resid_moran, listw = sp.weights, nsim = 999)
 ```
 
-The spatial regression model approach (often called _spatial lag_ or _spatial error_ models) is very similar to a traditional time-series regression, however correaltion coefficients are adjusted to include spatial associations. The first one account for spatial dependencies as part of the dependent variable $y$ while the second as part of the error $varepsilon$, depending whether spatial autocorrelation can be regarded as substantive and nuisance respectively.
+The spatial regression model approach (often called _spatial lag_ or _spatial error_ models) is very similar to a traditional time-series regression, however correlations are adjusted to include spatial associations. The first one account for spatial dependencies as part of the dependent variable $y$ while the second as part of the error $\varepsilon$, depending on whether spatial autocorrelation can be regarded as substantive or nuisance respectively.
 
-We can now run both a spatial lag and spatial error regression model and evaluate their results. The `lagsarlm` and `errorsarlm` functions from package `spdep` provide maximum likelihood estimation of spatial simultaneous autoregressive lag and error models respectively. 
+We can now run both a spatial lag and spatial error regression model and evaluate their results. The `lagsarlm()` and `errorsarlm()` functions from package `spdep` provide maximum likelihood estimation of spatial simultaneous autoregressive lag and error models respectively. 
 
 
 ```{r}
@@ -229,21 +240,27 @@ insurance.model.error <- errorsarlm(pct_insur ~ pct_unemp + pct_mar + pct_65over
 summary(insurance.model.error, Nagelkerke = T)
 
 ```
-The error model output is quite similar, with the main difference being that the strength of spatial association is now shown by the $\lambda$ autoregressive parameter. In comparison with the spatial lag model output, the spatial error model performs worse, based on their respective AICs and Log Likehood, but in general both seem to perform equally. 
+
+The error model output is quite similar, with the main difference being that the strength of spatial association is now shown by the $\lambda$ autoregressive parameter. In comparison with the spatial lag model output, the spatial error model performs worse, based on their respective AICs and Log Likehood, but in general both seem to perform equally: 
 
 ```{r}
 anova(insurance.model.lag, insurance.model.error)
 ```
 
-Further tests are needed in order to optimize the models, but the scope of this practical is to give you an introduction to spatial regression, particularly its concepts and basic interpretation. Spatial models can be quite complex, so there are a lot of materials available detailing specific aspects and variations of such models. Outside R, [GeoDA](https://s4.ad.brown.edu/Resources/Tutorial/Modul2/GeoDa3FINAL.pdf) also offers a variety of tools for performing spatial regression. 
+Further tests are needed in order to optimize the models, but the scope of this practical is to give you an introduction to spatial regression, particularly its concepts and basic interpretation. Spatial models can be quite complex, so there are a lot of materials available detailing specific aspects and variations of such models. 
 
-# Further resources / training
 
-For a good overview on spatial models see the book by Anselin, Florax and Rey (2004):
+## Further resources / training
+
+The book ["An Introduction to Generalized Linear Models"](https://www.crcpress.com/An-Introduction-to-Generalized-Linear-Models-Third-Edition/Dobson-Dobson-Barnett/p/book/9781584889502) by Dobson and Barnett provides a good examination of common regression models.
+
+* Dobson, A.J. and Barnett, A., 2008. An introduction to generalized linear models. Third Edition. CRC press.
+
+For a good overview on spatial models, see the book by Anselin, Florax and Rey (2004):
 
 * Anselin, L., Florax, R. and Rey, S. (2004). Advances in Spatial Econometrics. Springer, Berlin.
 
-
+Outside R, [GeoDA](https://spatial.uchicago.edu/geoda) also offers a variety of [tools](https://s4.ad.brown.edu/Resources/Tutorial/Modul2/GeoDa3FINAL.pdf) for performing spatial regression. 
 
 
 
