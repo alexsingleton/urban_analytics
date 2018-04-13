@@ -86,21 +86,6 @@ my_tokens <- create_token(app = "rtweet_tokens", #whatever you named your app
     consumer_secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 ```
 
-```{r,echo=FALSE,eval=FALSE}
-my_tokens <- c(create_token(app = "Urban Analytics Book", #whatever you named your app
-    consumer_key = "bgvV7sDVc1kMdl8FZH71vmZW7",
-    consumer_secret = "g5DKoKuZGNDEXJuLBgxlsZOmy7SyM4B91WN93PKoLApW2Ar9aX"),
-    create_token(app = "Urban Analytics Book 2", #whatever you named your app
-    consumer_key = "TiLYdBa7xzD3bkCjJGKNQg",
-    consumer_secret = "c3toImz9zCHlkTQbdyHXvb5aOMFVq1B6Jm7rH1bk8hY"),
-    create_token(app = "Urban Analytics Book 3", #whatever you named your app
-    consumer_key = "ikblFNyOrW4kd9pyWnWnUTtY5",
-    consumer_secret = "ky8FOVcKhyIB7mGiMWnpCZSVEgHb3eQUSA2jkLa1QEdQkU7Nd6"),
-    create_token(app = "Urban Analytics Book 4", #whatever you named your app
-    consumer_key = "rIeFN86KtbJVaflYXPFQ2C0QY",
-    consumer_secret = "0eMTAbm6zYc9BLsPbi9nQm877oQrS2fVY5EOrQVxx8qtJWd2uG"))
-```
-
 It is also possible to specify multiple tokens which is helpful as rtweet will use this to automatically mitigate some of the issues with Twitter API limits. An example is shown [here](https://github.com/mkearney/rtweet/blob/master/vignettes/tokens.Rmd) and uses the c() function.
 
 We then want to save the my_tokens object so that we can reuse it later if we create a new R session.
