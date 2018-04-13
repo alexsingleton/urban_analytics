@@ -1,0 +1,310 @@
+---
+title: "Exploring Data and Spatial Relationships"
+output: html_document
+---
+
+```{css}
+pre code, pre, code {
+  white-space: pre !important;
+  overflow-x: auto;
+  word-break: keep-all !important;
+  word-wrap: initial !important;
+}
+```
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width=800)
+options(scipen = 999)
+```
+
+## Learning Objectives
+
+By the end of this practical lab you will be able to:
+
+* Calculate some descriptive statistics and plot distributions
+* Perform some basic data cleaning and identify missing values
+* Explore correlations between variables
+* Plot maps showing the distribution and spatial patterns of observations
+
+
+
+## Exploratory data analysis
+
+Any type of analysis needs initially some kind of data exploration, which is often very helpful in understanding the underlying patterns of our observations, identify irregularities and selecting the right variables. This step is usually carried out by calculating descriptive statistics, plotting data distributions and other visualization tecqniques, a process also commonly reffered to as _"eyeballing the data"_. Data irregularities can easily thwart our efforts to effectively model urban phenomena, and caution is needed before continuing with any modelling activities.
+
+Suppose we decide to do some exploration of broadband connectivity patterns in the London region, such as summary statistics and the distribution of broadband speeds for each neighbourhood (in this case called _Lower Super Output Areas_ [(LSOA)](https://www.ons.gov.uk/methodology/geography/ukgeographies/censusgeography#output-area-oa). The raw dataset can be freely downloaded from OFCOM [here](https://www.ofcom.org.uk/research-and-data/multi-sector-research/infrastructure-research/connected-nations-2015/downloads).
+
+Firstly we will load some necessary libraries that will help visualize and analyse the data.
+
+```{r results='hide', message=FALSE, warning=FALSE}
+library(classInt)
+library(RColorBrewer)
+library(ggplot2)
+library(ggmap)
+```
+
+We can then load the data into R using the `read.csv` function.
+
+```{r }
+# Load data
+broadband.london <- read.csv("data/bband_london.csv")
+```
+
+A few common functions used to get some basic information about the data is the `head()` function, which outputs the first 5 observations of the dataset, and `summary()` function which provides some useful descriptive statistics for each variable.
+
+```{r }
+# Preview 
+head(broadband.london)
+
+# Get some summary statistics
+summary(broadband.london)
+```
+
+Two common distribution visualisations are the histogram and boxplot. We can use `hist()` to plot the distribution of a variable. As in most functions within R, we can add many parameters to adjust the properties of the histogram, such as the number of density intervals (bins), which we can specify using the `breaks` argument.
+
+```{r }
+# A simple histogram
+hist(broadband.london$Median_Downl_Speed, 
+     breaks = 15,  # amount of intervals
+     density = 20, # optional shading lines
+     main = "Distribution of Broadband Download Speeds per LSOA, London", # Graph Title
+     xlab = "Median Download Speed (Mbit/s)", # X-Axis Title
+     ylab = "Number of LSOAs") # Y-Axis Title
+
+```
+
+The next type of graphs that can be useful are _boxplots_. its a type of graph that shows the probability distribution of values along an axis. Boxplots are based on _quartiles_, which divide the dataset into four ranked groups, each representing 25% of the data. Boxplots thus reveal how "spread" values are and highlight any outliers. 
+
+```{r fig.width=6, fig.height=5}
+# Produce a simple boxplot
+boxplot(broadband.london$Median_Downl_Speed,
+        main = "Median Download Speeds by LSOA, London",
+        ylab = "Median Download Speed (Mbit/s)")
+```
+
+By default, the "boxed" area of the graph encloses 50% of the values around the median (50% of values, the centre bold line), while the bottom line (hinge) of the box represents the second quartile (25% to 50% of values) and the top at the third (50% to 75% of values). The "whiskers" (the two horizontal lines outside the box) are placed at 1.5 times the Interquartile Range (IQR), which is a value between calculating by difference between the upper (75%) and lower (25%) quartiles, $IQR = Q_3 −  Q_1$. 
+
+You will also notice that some points are plotted outside the whiskers. If values are above or below the whisker values, i.e. $Q_2 \pm 1.5*IQR$ then these are considered outliers. In this case we have mostly extreme median download speeds on the upper side of the distribution, but they don't seem very suprising. 
+
+We can get exact information on these values using the `bopxplot.stats()` function. 
+
+```{r}
+# Get boxplots statistics
+boxplot.stats(broadband.london$Median_Downl_Speed)
+```
+
+We can use the information provided by `bopxplot.stats()` to add values (labels) to our boxplot, combined with a simple `text()` function after our plot: 
+
+```{r fig.width=6, fig.height=5 }
+# Produce a boxplot with labels
+boxplot(broadband.london$Median_Downl_Speed,
+        main = "Median Download Speeds by LSOA, London",
+        ylab = "Median Download Speed (Mbit/s)")
+text(y = boxplot.stats(broadband.london$Median_Downl_Speed)$stats, 
+     labels = round(boxplot.stats(broadband.london$Median_Downl_Speed)$stats, 1), 
+     x = 1.25) # x controls how far to the right our labels will be plotted
+```
+
+In R we can easily produce multiple boxplots based the value of another variable, e.g. by type or area. Boxplots in R accept [formulas](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/formula.html), which allow to plot distributions divided by group; in R, the _"by"_ is broadly translated using the `~` symbol, in the fashion of _"value ~ type"_. In this case we will produce separate boxplots for each London subregion and look for any differentiation. 
+
+```{r fig.width=12, fig.height=5 }
+# Boxplots by subregion group
+boxplot(Median_Downl_Speed ~ Region, # Formula
+        data = broadband.london,
+        main = "Median Download Speeds by LSOA, London Subregions",
+        xlab = "London Subregion",
+        ylab = "Median Download Speed (Mbit/s)")
+```
+
+The boxplots show the differences in download speed between the different subregions of London. At first glance, differences tend to be subtle but the general trend seems to be that population density may have a key role in broadband speeds. One of the issues here is that grouping areas into subregions may not reflect the actual organization of geographic space. We can increase the granularity and produce a boxplots for each of the 33 London Boroughs. 
+
+```{r echo= c(1,3), fig.width=12, fig.height=8 }
+# Boxplots by Borough 
+par(mar = c(11, 4.1, 4.1, 2.1))
+boxplot(formula = Median_Downl_Speed ~ Borough, 
+        data = broadband.london,
+        main = "Median Download Speeds by LSOA, London Boroughs",
+        ylab = "Median Download Speed (Mbit/s)", 
+        las = 2) # vertical labels
+par(mar = c(5.1, 4.1, 4.1, 2.1))
+```
+
+
+This graph shows that the differences in the distribution of the Median Download Speeds are much more pronounced at higher scales. There may be dinstinctive local patterns of Internet connectivity; perhaps factors such as population density and income are some of the variables that affect infrastucture development (you can find these data within the same dataset).
+
+However, note that increasing granularity offers more insight but diminishes our ability to visualize and easily convey the results; for some, the above graph may already be too difficult to read. Histograms and boxplots are few of the most common tools in visualizing distributions, but there are many other methods that can be used, depending on the nature of data.
+
+
+## Correlation
+
+Correlation is another concept useful in identifying relationships and exploring urban phenomena. Simply put, correlation is how a variable changes when another variable changes. _"Correlation measures"_ or _"measures of association"_ are the outcomes of statistical methods used to quantify the relationship between two or more variables. 
+
+Depending on the nature of the variables and the type of relationship various factors / coefficients have been proposed. One of the most common measures is the Pearson's Correlation Coefficient *r*, which measures the the strength and direction of the relationship between two continuous variables. Pearson's r takes values between -1 and 1, with 1 showing a perfect degree of _positive_ association while a -1 a perfect _negative_ respectively. Values around 0 on the other hand suggest that there is a weak relationship between variables.
+
+In R, Pearson's Correlation Coefficient can be easily computed using the `cor()` function. For a very basic example, we will use Airbnb data Washington, DC and do some analysis for a snapshot of the offered accommodation. There are various repositories online that can be used to download Airbnb data, such as [insideairbnb.com](http://insideairbnb.com/get-the-data.html) or [tomslee.net](http://tomslee.net/airbnb-data-collection-get-the-data).
+
+```{r }
+# Load data
+airbnb.dc <- read.csv("data/airbnb_dc.csv")
+
+# Preview 
+head(airbnb.dc)
+
+```
+
+Upon inspection, there are some issues with our data that may be problematic in our analysis. For instance, variable _cleaning_fee_ has been identified as a nominal variable (factor) and should be convereted to numerical; generally, numeric values are much easier to handle and model. Empty cells should also be replaced with 0 in this context (although not always!).  There is a dedicated field in statistics dealing with missing data, and this is called _[imputation](https://en.wikipedia.org/wiki/Imputation_(statistics))_. A number of imputation techniques have been proposed, i.e. filling missing values with average values, based on the nearest neighbor or build a model in order to predict values based on other information. Imputation is important since dealing with missing values can be problematic depending on how various models handle them.
+
+In this context, missing values in our dataset (R will code those as `NA`) may result in errors depending how various functions handle missing data. Errors also occur because datasets are rarely provided in a format that is ready for analysis. Restructuring data to get to a format that is aligned with the methods of our analysis is an essential and time-wise, often overlooked, step. Remember, data cleaning can take up to 80% - 90% of an analysis. 
+
+In R, we can retrieve detailed information on data structure with the `str()` function.
+
+```{r}
+# Data structure
+str(airbnb.dc)
+```
+
+We will try fix the _cleaning_fee_ variable to a numeric one:
+
+```{r }
+# Fix cleaning_fee
+airbnb.dc$cleaning_fee <- substring(airbnb.dc$cleaning_fee, 2) # crop the first character ($ sign)
+airbnb.dc$cleaning_fee[airbnb.dc$cleaning_fee == ""] <- 0 # assign 0 to empty cells
+airbnb.dc$cleaning_fee <- as.numeric(airbnb.dc$cleaning_fee)
+```
+
+Now, suppose we want to perform some analysis on accommodation prices. Let's get some summary statistics for the variables _price_ and _number of beds_.
+
+```{r}
+# Check the distribution of prices and number of beds
+summary(airbnb.dc$price)
+summary(airbnb.dc$beds)
+```
+
+Besides descriptive statistics, the `summary` function also gives information about the amount of missing data in our data; in this case 21 NAs are present in the variable _beds_.
+
+Remember that outliers can hinder our ability to analyse and visualize distributions. With regards to variable _price_, while the mean is almost $150, the maximum values is $2822. We should avoid plotting extreme outliers as they will obscure details of the distribution; thankfully, we can easily "crop" the visible area of the graph between specified values using the `xlim` and `ylim` for the _x_ and _y_ axis respectively. 
+
+```{r}
+# Plot the distribution of price by limiting the x-axis
+hist(airbnb.dc$price,
+     breaks = max(airbnb.dc$price)/10,  # to get a ~ $10 interval 
+     xlim = c(0, 500), # this will limit the x axis values between $0 and $500
+     main = "Distribution of Airbnb Prices in Washington, DC, 2015", # Graph Title
+     xlab = "Price ($)", # X-Axis Title
+     ylab = "Number of Listings") # Y-Axis Title)
+```
+
+Now, let's calculate the relationship between _price_ and _number of beds_. 
+
+```{r }
+# Assign variables for simplicity
+x <- airbnb.dc$price
+y <- airbnb.dc$beds
+
+# Calculate (Pearson) correlation; note that method = "pearson" is the default, and thus can be omitted
+cor(x, y, method = "pearson")
+
+```
+
+The above correlation fails because there are NA values in the _beds_ variable. However, we can add the `use = "complete.obs"` argument to exclude observations casewise. Another approach would be to delete observations with NA values from the dataset, altogether but that may remove important information from other variables as well.
+
+```{r }
+cor(x, y, method = "pearson", use = "complete.obs")
+```
+
+The r value of ~0.46 suggests that there is a strong positive relationship between price and number of beds, which suggests that accommodation price is associated significantly on the basis of how many people it accommodates. Other factors that may associate with price is, inter alia, housing quality and location. If we were to perform the same analysis in the case of hotel rooms, for example, the number of beds would probably have a very low correlation with price. 
+
+Since the cost of accommodation is a combination of price (per night) and the cleaning fee, we can also test whether the combined cost is better or worse associated with the number of beds.
+
+```{r }
+# Assign variables
+x <- airbnb.dc$price + airbnb.dc$cleaning_fee # add the two variables
+y <- airbnb.dc$beds
+
+cor(x, y, method = "pearson", use = "complete.obs")
+```
+
+Which provides a marginally better result. Still, according to [airbnb](http://rentingyourplace.com/airbnb-101/pricing/to-fee-or-not-to-fee/) the cleaning fee is associated with the duration of stay, while price is per night. In this framework it might not be too sensible to add both of them withough having information on duration of stay. A good practice is to always look at additional information on the variables, usually expressed as _metadata_ accompanying the dataset.
+
+With this in mind, lets explore the association between combined price and review score rating.
+
+```{r }
+# Assign variables
+x <- airbnb.dc$price + airbnb.dc$cleaning_fee
+y <- airbnb.dc$review_scores_rating
+
+cor(x, y, method = "pearson", use = "complete.obs")
+```
+
+As expected, there is not a strong relationship between review scores and price. The _r_ value is very close to zero, indicating a very weak relationship between the two variables. A "good" accommodation does not mean it is a cheap or expensive one, it depends on multiple factors; to explore such relationships a simple correlation ratio will not suffice, and other techniques, such as regression, should be applied. We will talk more about regression in another section. 
+
+Note that the strength of a relationship and the significance of a relationship is two different concepts. Usually, correlation is presented with some measure of significance, i.e. the confidence we have that the relationship we identified is not random. We can use `cor.test()` in order to get more information on the test results.
+
+```{r }
+# Assign variables
+x <- airbnb.dc$price
+y <- airbnb.dc$beds
+
+# Calculate correlation
+cor.test(x, y, method = "pearson")
+```
+
+The test suggest that the correlation is indeed significant at > 95% confidence, as shown by the p-value. Sometimes correlation may be high but not very significant, especially if the number of observations is quite small. It is also important to remember that not all measures of correlation are appropriate for all variables. Pearson correlation is a parametric technique, meaning it will only work correctly if the relationship between variables is linear, both variables are be normally distributed and that values around the regression line are evenly distributed (homoscedasticity). There are many statistical textbooks and [online resources](https://en.wikipedia.org/wiki/Correlation_and_dependence) available that explore these concepts in more detail.
+
+The base functions in R includes two more common measures of correlation, Spearman rank correlation and Kendall rank correlation, which are non-parametric, but are designed to calculate strength of association when variables are ordinal. The [UK Index of Multiple Deprivation](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2015), for instance, is rank-based meaning that each area is ranked from worst to best based on various measures of deprivation, so a Pearson correlation between i.e. rank and income would be meaningless. 
+
+
+## Spatial Associations
+
+Another thing to take into account is that when you compute the correlation coefficient you get a single number; you might however have reason to think that the relationship between variables is not spatially constant. A key assumption correlation statistics is that the observations are independent from one another. This means that the magnitude of a variable at one location should not be correlated with the magnitude at nearby locations. However, this is hardly the case; remember [Tobler's first law of geography](https://en.wikipedia.org/wiki/Tobler%27s_first_law_of_geography). Most urban phenomena appear to have inherent spatial patterns where values are clustered together. This phenomenon is called [_spatial autocorrelation_](https://en.wikipedia.org/wiki/Indicators_of_spatial_association).
+
+In our example, the location of accommodation in Washington, DC probably plays an important role in observed prices. For example, central locations might have significantly higher prices than the periphery. The same holds true when we explored broadband connectivity in London earlier.
+
+At this stage, we can explore variation by plotting a simple map of price values within Washington, and look or any meaningful spatial patterns. The dataset has two variables, _longitude_ and _latitude_ that we can use to map the accommodation  as points. Variation in prices can be shown using _bins_ of values due to the extreme outliers identified earlier.
+
+```{r }
+# Make bins of prices
+breaks <- classIntervals(airbnb.dc$price, 5, style = "kmeans", dataPrecision = 0)
+
+# Make new variable with categories
+airbnb.dc$price_cat <- cut(airbnb.dc$price, breaks = breaks$brks, include.lowest = T)
+
+# Get 5 colors based on the YlGnBu ramp
+map_colors <- brewer.pal(5, "YlGnBu")
+```
+
+We can now plot a map of all the accommodation locations colored by price for the Washington, DC area.
+
+```{r warning=FALSE, message=FALSE, fig.width=12, fig.height=8}
+# Get the Washington, DC general location
+dc.location <- c(-77.11, 38.83, -76.93, 38.99)
+
+# Get backdrop map tiles, various sources can be used here such as google, osm, stamen, etc.
+dc.map <- get_map(location=dc.location, source="stamen", maptype="toner", zoom=13, crop=FALSE)
+
+# Make a map with the airbnb points
+airbnb.dc.map <- ggmap(dc.map) + 
+                 geom_point(aes(x=longitude, y=latitude, color=price_cat), 
+                            data=airbnb.dc, alpha = 0.9, size = 0.6) +
+                 theme(axis.title=element_blank(), axis.text=element_blank(), 
+                 axis.ticks=element_blank(), 
+                 panel.border = element_rect(colour="black", fill=NA, size=1.2)) +
+                 scale_color_manual(values = map_colors) 
+
+airbnb.dc.map # Plot the map
+
+```
+
+
+The resulting maps shows variation in prices based on the proximity to the city centre, as well a few other clusters of high prices (e.g. to the West and North-East). These clusters show locations that accommodation offered has high spatial autocorrelation in terms of prices.
+
+Spatial autocorrelation measures can be computed with a number of measures; this measures can look at relationships globally (e.g. if the spatial pattern of the dataset as a whole is randomly distributed in space or not), such as with [Moran's I statistic](https://en.wikipedia.org/wiki/Moran%27s_I), or locally (e.g. if clusters of similar values are observed but without homogeneity) such as with Local Indicators of Spatial Association (LISA) or Getis-Ord (Gi*) statistics. Generally, computing a _spatial weights matrix_ is  essential in order to carry out these measurements. Package `spdep` has a lot of functions that can be useful when exploring spatial dependencies.
+
+In this case we will further explore the relationships between location and magnitude using a _spatial regression model_. However, these models can be quite complex, so before that we will look at simple regression models first.
+
+
+## Further resources / training
+
+There are a lot of publications and online resources that provide a more in-depth analysis of spatial relationships. A good introductory text is Quantitative Geography by Fotheringham, Brunsdon and Charlton. 
+
+* Fotheringham, A.S., C. Brunsdon and M. Charlton (2000). Quantitative Geography, Perspectives on Spatial Data Analysis. London: Sage Publications.
