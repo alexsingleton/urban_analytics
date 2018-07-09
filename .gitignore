@@ -31,3 +31,10 @@ vignettes/*.pdf
 # Temporary files created by R markdown
 *.utf8.md
 *.knit.md
+
+# Mac stuff
+.DS_Store
+
+# Python stuff
+.ipynb_checkpoints
+*.pyc
