@@ -24,7 +24,7 @@ b <- round(runif(32, 0, 40)) # runif can be used to generate random numbers - in
 c <- data.frame(a,b)
 ```
 
-You can type c into the console to return the who data frame, however, it you might just want to look at the top few rows. This can be achieved with the head() function:
+You can type c into the console to return the whole data frame, however, you might just want to look at the top few rows. This can be achieved with the head() function:
 
 <a id="data_frame_ex"></a>
 ```{r}
@@ -128,7 +128,7 @@ str(earnings)
 
 This shows that the object is a data frame with 197 rows and 5 variables. For each of the attributes the class is shown (num = numeric; int = integer and Factor, with the number of levels). The read.csv() function guesses the column types when the data are read into R.
 
-One issue you might notice is that the earnings and earnings_m variables have been read in as a Factor. The reason these columns were not read as integers (like the pop and pop_m) column is the presence of two non-numeric values which are shown as "*" and "-". In ACS data these two symbols indicate that the sample sizes were either no sample observations or too few sample observations to make a calculation.
+One issue you might notice is that the earnings and earnings_m variables have been read in as a Factor. The reason these columns were not read as integers (like the pop and pop_m) is the presence of two non-numeric values which are shown as "*" and "-". In ACS data these two symbols indicate that the sample sizes were either no sample observations or too few sample observations to make a calculation.
 
 Issues such as these are quite common when reading in external data; and we will look at how this can be corrected later.
 
@@ -258,7 +258,7 @@ SF <- SF[SF@data$GEOID10 != "06075980401",] # Overwrites the SF object
 
 ### Clipping Spatial Data
 
-Clipping is a process of subsetting using overlapping spatial data. The following code uses the outline of the coast of the U.S. to clip the boundaries of the SD spatial data frame object:
+Clipping is a process of subsetting using overlapping spatial data. The following code uses the outline of the coast of the U.S. to clip the boundaries of the SF spatial data frame object:
 ```{r message=FALSE}
 #Load library
 library("raster")
@@ -282,7 +282,7 @@ library(spatialEco)
 ```
 
 ```{r}
-SP_311_PIP <- point.in.poly(SP_311, coast) # Clip the the SF spatial data frame object to the coastline
+SP_311_PIP <- point.in.poly(SP_311, coast) # Clip the the 331 points data object to the coastline
 ```
 
 You can now see that this has subset the data to the extent of the peninsula area of San Francisco (see the [previous plot](#point_plot)):
@@ -294,7 +294,7 @@ plot(SP_311_PIP)
 
 ## Merging Tabular Data
 
-So far we have utilized a single data frame or spatial object; however, it is often the case that in order to generate information, data from multiple sources are required. Where data share a common "key", these can be used to combine / link tables together. This might for example be an identifier for a zone; and is one of the reasons why most statistical agencies adopt a standard sets of geographic codes to identify areas.
+So far we have utilized a single data frame or spatial object; however, it is often the case that in order to generate information, data from multiple sources are required. Where data share a common "key", these can be used to combine / link tables together. This might for example be an identifier for a zone; and is one of the reasons why most statistical agencies adopt a standard set of geographic codes to identify areas.
 
 In the earlier imported data "earnings" this included a UID column which relates to a Tract ID. We can now import an additional data table called bachelors - this also includes the same ID.
 
