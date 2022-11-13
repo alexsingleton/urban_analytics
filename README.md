@@ -10,7 +10,7 @@ As such, we have written the book in an accessible style that is pitched at a wi
 2. Sensing the city
 3. Urban Data Infrastructure
 4. Visualizing the city
-5. Cities and Context
+5. Differences within Cities
 6. Explaining the city
 7. Generative urban systems
 8. Cities as networks and flows
